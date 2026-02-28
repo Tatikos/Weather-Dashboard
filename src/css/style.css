@@ -47,18 +47,12 @@ body {
   color: var(--text-primary);
   background:
     linear-gradient(170deg, rgba(4,12,24,0.62) 0%, rgba(4,12,24,0.80) 100%),
-    url('../public/sunset.jpg') no-repeat center center fixed;
+    url('../../public/sunset.jpg') no-repeat center center fixed,
+    linear-gradient(160deg, #040c18 0%, #071828 50%, #0a1a10 100%);
+    
   background-size: cover;
 }
 
-/* Fallback gradient when image hasn't loaded */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: linear-gradient(160deg, #040c18 0%, #071828 50%, #0a1a10 100%);
-  z-index: -1;
-}
 
 /* ── UTILITY ─────────────────────────────────────────────────── */
 .hidden { display: none !important; }
