@@ -1,1 +1,312 @@
 <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Advanced Weather Dashboard</title>
+
+  <!-- Bootstrap 5 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" />
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <!-- Google Fonts: Syne (display) + DM Sans (body) -->
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+  <!-- OpenLayers -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v10.8.0/ol.css" />
+  <!-- App styles -->
+  <link rel="stylesheet" href="src/style.css" />
+</head>
+<body>
+
+  <!-- ── LOADING OVERLAY ─────────────────────────── -->
+  <div id="loading-overlay" aria-hidden="true">
+    <div class="spinner-border" role="status"></div>
+    <p>Fetching weather data…</p>
+  </div>
+
+  <!-- ── HEADER / SEARCH ─────────────────────────── -->
+  <header id="header-section">
+    <div class="container-fluid px-3 px-md-4">
+      <div class="row justify-content-center">
+        <div class="col-12 col-xl-10">
+
+          <div class="text-center mb-4">
+            <h1 class="dashboard-title">Advanced Weather Dashboard</h1>
+            <p class="dashboard-subtitle">* The ultimate weather guide *</p>
+          </div>
+
+          <div class="search-card">
+            <div class="row g-2 align-items-start">
+
+              <!-- Region input -->
+              <div class="col-12 col-md-4">
+                <input
+                  type="text"
+                  id="region-input"
+                  class="form-control custom-input"
+                  placeholder="Enter region"
+                  autocomplete="off"
+                />
+                <div class="field-error" id="region-error">Please enter your region!</div>
+              </div>
+
+              <!-- City select -->
+              <div class="col-12 col-md-5">
+                <select id="city-select" class="form-select custom-input">
+                  <option value="">Select city</option>
+                  <option value="Nicosia">Nicosia</option>
+                  <option value="Limassol">Limassol</option>
+                  <option value="Larnaca">Larnaca</option>
+                  <option value="Paphos">Paphos</option>
+                  <option value="Famagusta">Famagusta</option>
+                  <option value="Kyrenia">Kyrenia</option>
+                  <option value="Ammochostos">Ammochostos</option>
+                </select>
+                <div class="field-error" id="city-error">Please select your city!</div>
+              </div>
+
+              <!-- Action buttons -->
+              <div class="col-12 col-md-3 d-flex gap-2">
+                <button id="btn-search" class="btn btn-action btn-search flex-fill" title="Search">
+                  <i class="fa-solid fa-search"></i>
+                </button>
+                <button id="btn-clear" class="btn btn-action btn-clear flex-fill" title="Clear">
+                  <i class="fa-solid fa-ban"></i>
+                </button>
+                <button id="btn-log" class="btn btn-action btn-log flex-fill" title="Log">
+                  <i class="fa-solid fa-server"></i>
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── DIVIDER 1 ─────────────────────────────────── -->
+  <hr class="section-divider hidden" id="divider-1" />
+
+  <!-- ── RESULTS (tabs) ────────────────────────────── -->
+  <section id="results-section" class="hidden">
+    <div class="container-fluid px-3 px-md-4">
+      <div class="row justify-content-center">
+        <div class="col-12 col-xl-10">
+
+          <ul class="nav nav-tabs weather-tabs mb-3" id="weatherTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-now" role="tab">
+                Right Now
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-24h" role="tab">
+                Next 24 hours
+              </button>
+            </li>
+          </ul>
+
+          <div class="tab-content">
+
+            <!-- TAB 1 — RIGHT NOW -->
+            <div class="tab-pane fade show active" id="tab-now" role="tabpanel">
+              <div class="row g-3">
+
+                <!-- Current weather table -->
+                <div class="col-12 col-md-6">
+                  <div class="weather-card h-100">
+                    <div class="row align-items-center mb-3 g-2">
+                      <div class="col-4 text-center">
+                        <img id="weather-icon" src="" alt="weather icon" class="weather-icon-lg" />
+                      </div>
+                      <div class="col-8">
+                        <div class="weather-desc"  id="weather-description">--</div>
+                        <div class="weather-temp">
+                          <span id="weather-temp-val">--</span>
+                          <span class="temp-unit">°C</span>
+                        </div>
+                        <div class="weather-hilo">
+                          <span class="temp-low"  id="w-temp-min">L:--°C</span>
+                          <span class="hilo-sep">|</span>
+                          <span class="temp-high" id="w-temp-max">H:--°C</span>
+                        </div>
+                      </div>
+                    </div>
+                    <table class="table table-sm weather-table mb-0">
+                      <tbody>
+                        <tr><td class="label-col">Pressure</td>    <td id="w-pressure">--</td></tr>
+                        <tr><td class="label-col">Humidity</td>    <td id="w-humidity">--</td></tr>
+                        <tr><td class="label-col">Wind Speed</td>  <td id="w-wind">--</td></tr>
+                        <tr><td class="label-col">Cloud Cover</td> <td id="w-clouds">--</td></tr>
+                        <tr><td class="label-col">Sunrise</td>     <td id="w-sunrise">--</td></tr>
+                        <tr><td class="label-col">Sunset</td>      <td id="w-sunset">--</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <!-- Map -->
+                <div class="col-12 col-md-6">
+                  <div class="weather-card map-wrapper h-100">
+                    <div id="map"></div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- TAB 2 — NEXT 24H -->
+            <div class="tab-pane fade" id="tab-24h" role="tabpanel">
+              <div class="weather-card">
+                <div class="table-responsive">
+                  <table class="table table-sm forecast-table mb-0">
+                    <thead>
+                      <tr>
+                        <th>Time</th>
+                        <th>Summary</th>
+                        <th>Temp</th>
+                        <th>Cloud Cover</th>
+                        <th>Details</th>
+                      </tr>
+                    </thead>
+                    <tbody id="forecast-tbody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+          </div><!-- /tab-content -->
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── DIVIDER 2 ─────────────────────────────────── -->
+  <hr class="section-divider hidden" id="divider-2" />
+
+  <!-- ── CHARTS ─────────────────────────────────────── -->
+  <section id="charts-section" class="hidden">
+    <div class="container-fluid px-3 px-md-4">
+      <div class="row justify-content-center">
+        <div class="col-12 col-xl-10">
+
+          <!-- Gauges -->
+          <div class="weather-card mb-3">
+            <p class="card-section-title" id="gauges-title">Weather extremes within next 5 days</p>
+            <div class="row">
+              <div class="col-12 col-md-4"><div id="gauge-temp"></div></div>
+              <div class="col-12 col-md-4"><div id="gauge-humidity"></div></div>
+              <div class="col-12 col-md-4"><div id="gauge-pressure"></div></div>
+            </div>
+          </div>
+
+          <!-- Line charts -->
+          <div class="weather-card mb-3">
+            <p class="card-section-title" id="charts-title">Weather Forecast</p>
+            <div class="row">
+              <div class="col-12 col-md-4"><div id="chart-temp"></div></div>
+              <div class="col-12 col-md-4"><div id="chart-humidity"></div></div>
+              <div class="col-12 col-md-4"><div id="chart-pressure"></div></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <hr class="section-divider hidden" id="divider-3" />
+  <section id="aq-section" class="hidden">
+    <div class="container-fluid px-3 px-md-4 pb-5">
+      <div class="row justify-content-center">
+        <div class="col-12 col-xl-10">
+          <div class="weather-card">
+            <p class="card-section-title" id="aq-title">Air Quality</p>
+            <div class="row text-center aq-grid">
+              <div class="col-6 col-md-3 aq-item"><div class="aq-label">AQI</div>             <div class="aq-value" id="aq-aqi">--</div></div>
+              <div class="col-6 col-md-3 aq-item"><div class="aq-label">PM2.5</div>           <div class="aq-value" id="aq-pm25">--</div></div>
+              <div class="col-6 col-md-3 aq-item"><div class="aq-label">PM10</div>            <div class="aq-value" id="aq-pm10">--</div></div>
+              <div class="col-6 col-md-3 aq-item"><div class="aq-label">CO</div>              <div class="aq-value" id="aq-co">--</div></div>
+              <div class="col-6 col-md-3 aq-item"><div class="aq-label">NO<sub>2</sub></div>  <div class="aq-value" id="aq-no2">--</div></div>
+              <div class="col-6 col-md-3 aq-item"><div class="aq-label">O<sub>3</sub></div>   <div class="aq-value" id="aq-o3">--</div></div>
+              <div class="col-6 col-md-3 aq-item"><div class="aq-label">SO<sub>2</sub></div>  <div class="aq-value" id="aq-so2">--</div></div>
+              <div class="col-6 col-md-3 aq-item"><div class="aq-label">Dew</div>             <div class="aq-value" id="aq-dew">--</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="modal fade" id="forecastModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content custom-modal">
+        <div class="modal-header">
+          <h5 class="modal-title" id="forecastModalTitle">Weather Details</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row align-items-center mb-4">
+            <div class="col-4 text-center">
+              <img id="modal-icon" src="" alt="icon" class="modal-weather-icon" />
+            </div>
+            <div class="col-8">
+              <p class="modal-weather-desc mb-0" id="modal-weather-text">--</p>
+            </div>
+          </div>
+          <div class="row text-center">
+            <div class="col-4">
+              <div class="modal-stat-label">Humidity</div>
+              <div class="modal-stat-value" id="modal-humidity">--</div>
+            </div>
+            <div class="col-4">
+              <div class="modal-stat-label">Pressure</div>
+              <div class="modal-stat-value" id="modal-pressure">--</div>
+            </div>
+            <div class="col-4">
+              <div class="modal-stat-label">Wind Speed</div>
+              <div class="modal-stat-value" id="modal-wind">--</div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="logModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content custom-modal">
+        <div class="modal-header">
+          <h5 class="modal-title">Last 5 requests</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="table-responsive">
+            <table class="table table-sm log-table mb-0">
+              <thead>
+                <tr><th>Time</th><th>Region</th><th>City</th><th>Country</th></tr>
+              </thead>
+              <tbody id="log-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ol@v10.8.0/dist/ol.js"></script>
+  <script src="https://cdn.plot.ly/plotly-3.3.0.min.js"></script>
+  <script src="src/script.js"></script>
+
+</body>
+</html>
