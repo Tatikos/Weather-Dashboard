@@ -12,12 +12,9 @@
 
 // ── CONFIG ────────────────────────────────────────────────────
 // Locally you can set these directly for testing:
-const ENV = window.ENV || {
-  OWM_KEY:  'YOUR_OWM_API_KEY',
-  AQICN_KEY:'YOUR_AQICN_TOKEN',
-  USERNAME: 'YOUR_UCY_USERNAME',
-};
-
+const OWM_KEY = window.ENV.OWM_KEY;
+const AQICN_KEY = window.ENV.AQICN_KEY;
+const USERNAME = window.ENV.USERNAME || "student_test";
 const PHP_FILE = 'php/weather.php';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun',
@@ -78,6 +75,112 @@ function validate() {
   return valid;
 }
 
+/**
+ * Sends a POST request to weather.php to log the search
+ */
+async function saveToDatabase(region, city) {
+  try {
+    const payload = {
+      username: USERNAME,
+      region: region,
+      city: city,
+      country: "Cyprus" // Your PHP expects this!
+    };
+
+    const response = await fetch('php/weather.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (response.status === 201) {
+      console.log("Database log successful (or gracefully skipped locally).");
+    } else {
+      console.warn("Backend warning:", await response.text());
+    }
+  } catch (error) {
+    console.error("Failed to connect to weather.php for logging:", error);
+  }
+}
+
+/**
+ * Fetches the last 5 searches from the database and opens the modal
+ */
+document.getElementById('btn-log').addEventListener('click', async () => {
+  const tbody = document.getElementById('log-tbody');
+  
+  // Show a loading message in the table while it fetches
+  tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Loading logs...</td></tr>';
+  
+  // Open the Bootstrap modal immediately so the user knows something is happening
+  const logModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('logModal'));
+  logModal.show();
+
+  try {
+    // 1. Send GET request to weather.php with your username
+    const response = await fetch(`php/weather.php?username=${encodeURIComponent(USERNAME)}`);
+    const data = await response.json();
+
+    // 2. Clear the loading message
+    tbody.innerHTML = ''; 
+
+    // 3. Populate the table
+    if (data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No logs found. (DB might be skipped locally)</td></tr>';
+    } else {
+      data.forEach(log => {
+        // Convert the UNIX timestamp (seconds) from PHP back into a readable Date
+        const date = new Date(log.timestamp * 1000);
+        const timeString = date.toLocaleString([], { 
+          month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+        });
+
+        // Create the table row
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${timeString}</td>
+          <td>${log.region}</td>
+          <td>${log.city}</td>
+          <td>${log.country}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+  } catch (error) {
+    console.error("Error fetching logs:", error);
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Failed to load logs.</td></tr>';
+  }
+});
+
+
+/**
+ * Geocode a location using Nominatim REST API
+ * @param {string} query - The location to search for (e.g., "Nicosia, Cyprus")
+ * @returns {Promise<Object|null>} - Returns an object with {lat, lon} or null if not found
+ */
+async function getCoordinates(query) {
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
+
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (data && data.length > 0) {
+      return {
+        lat: parseFloat(data[0].lat),
+        lon: parseFloat(data[0].lon),
+        displayName: data[0].display_name
+      };
+    } else {
+      console.warn("Nominatim: Location not found.");
+      return null;
+    }
+  } catch (error) {
+    console.error("Error fetching coordinates from Nominatim:", error);
+    return null;
+  }
+}
 // ── CLEAR ─────────────────────────────────────────────────────
 function clearAll() {
   // Reset inputs
@@ -109,64 +212,6 @@ function clearAll() {
 btnSearch.addEventListener('click', handleSearch);
 btnClear.addEventListener('click', clearAll);
 
-async function handleSearch() {
-  if (!validate()) return;
-
-  const region = regionInput.value.trim();
-  const city   = citySelect.value;
-
-  showLoading();
-
-  // (a) Save interaction to DB (fire-and-forget)
-  saveToDatabase(region, city);
-
-  // (b) Geocode via Nominatim
-  const nominatimUrl =
-    `https://nominatim.openstreetmap.org/search` +
-    `?q=${encodeURIComponent(region)},${encodeURIComponent(city)}` +
-    `&format=json&addressdetails=1`;
-
-  try {
-    const geoRes  = await fetch(nominatimUrl, { headers: { 'Accept-Language': 'en' } });
-    const geoData = await geoRes.json();
-
-    if (!geoData || geoData.length === 0) {
-      hideLoading();
-      alert('No result for that location.');
-      return;
-    }
-
-    const lat = parseFloat(geoData[0].lat);
-    const lon = parseFloat(geoData[0].lon);
-
-    // Show results container first so map has a valid target
-    showResultsUI();
-
-    // Parallel: current weather + forecast
-    const [, fcData] = await Promise.all([
-      fetchCurrentWeather(lat, lon),
-      fetchForecastWeather(lat, lon),
-    ]);
-
-    // Map (needs results section visible)
-    createMap(lat, lon);
-
-    // Charts & air quality
-    displayCharts(fcData, region, city);
-    showChartsUI(region, city);
-
-    fetchAirQuality(city, region);
-    showAQUI(region, city);
-
-    hideLoading();
-
-  } catch (err) {
-    hideLoading();
-    console.error('Search error:', err);
-    alert('An error occurred while fetching weather data. Please try again.');
-  }
-}
-
 // ── SHOW / HIDE UI SECTIONS ───────────────────────────────────
 function showResultsUI() {
   divider1.classList.remove('hidden');
@@ -185,21 +230,6 @@ function showAQUI(region, city) {
   aqSection.classList.remove('hidden');
   document.getElementById('aq-title').textContent =
     `Air Quality for ${region}, ${city}`;
-}
-
-// ── DATABASE SAVE (PHP POST) ──────────────────────────────────
-function saveToDatabase(region, city) {
-  const payload = {
-    username: ENV.USERNAME,
-    region,
-    city,
-    country: 'Cyprus',
-  };
-  fetch(PHP_FILE, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify(payload),
-  }).catch(err => console.warn('DB save failed:', err));
 }
 
 // ── CURRENT WEATHER ───────────────────────────────────────────
@@ -256,6 +286,75 @@ async function fetchForecastWeather(lat, lon) {
   forecastData = data;
   populateForecastTable(data);
   return data;
+}
+
+// Keep track of the map and marker layer globally so we can update them later
+let weatherMap;
+let markerLayer;
+
+/**
+ * Updates the OpenLayers map to center on new coordinates and drop a marker
+ * @param {number} lat - Latitude
+ * @param {number} lon - Longitude
+ */
+function updateMapCenter(lat, lon) {
+  // 1. Convert standard Lat/Lon to OpenLayers Web Mercator projection
+  // WARNING: OpenLayers requires [Longitude, Latitude] order!
+  const coords = ol.proj.fromLonLat([lon, lat]);
+
+  if (!weatherMap) {
+    // --- CREATE THE MAP (First Search Only) ---
+
+    // Create a vector source and layer for our map marker
+    const markerSource = new ol.source.Vector();
+    markerLayer = new ol.layer.Vector({ source: markerSource });
+
+    // Initialize the map inside the <div id="map">
+    weatherMap = new ol.Map({
+      target: 'map',
+      layers: [
+        // The base map layer (OpenStreetMap)
+        new ol.layer.Tile({
+          source: new ol.source.OSM()
+        }),
+        // Our marker layer on top
+        markerLayer
+      ],
+      view: new ol.View({
+        center: coords,
+        zoom: 12 // Zoom level (12 is good for a city view)
+      })
+    });
+  } else {
+    // --- UPDATE THE MAP (Subsequent Searches) ---
+    
+    // Smoothly pan the map to the new city
+    weatherMap.getView().animate({
+      center: coords,
+      zoom: 12,
+      duration: 1000 // 1 second animation
+    });
+  }
+
+  // --- UPDATE THE MARKER ---
+  
+  // Create a new point geometry for the marker
+  const marker = new ol.Feature({
+    geometry: new ol.geom.Point(coords)
+  });
+
+  // Style the marker (A nice red circle to match your UI's var(--clr-danger))
+  marker.setStyle(new ol.style.Style({
+    image: new ol.style.Circle({
+      radius: 9,
+      fill: new ol.style.Fill({ color: '#ff4d6d' }),
+      stroke: new ol.style.Stroke({ color: '#ffffff', width: 2 })
+    })
+  }));
+
+  // Clear any old markers and add the new one
+  markerLayer.getSource().clear();
+  markerLayer.getSource().addFeature(marker);
 }
 
 function populateForecastTable(data) {
@@ -446,79 +545,161 @@ function createMap(lat, lon) {
   setTimeout(() => olMap.updateSize(), 100);
 }
 
-// ── AIR QUALITY (AQICN) ───────────────────────────────────────
-function fetchAirQuality(city) {
-  const url =
-    `https://api.waqi.info/feed/${encodeURIComponent(city)}/` +
-    `?token=${ENV.AQICN_KEY}`;
 
-  fetch(url)
-    .then(r => r.json())
-    .then(data => {
-      if (data.status !== 'ok') {
-        setAllAQ('N.A.');
-        return;
-      }
-      const d = data.data;
-      setAQ('aq-aqi',  d.aqi);
-      setAQ('aq-pm25', d.iaqi?.pm25?.v);
-      setAQ('aq-pm10', d.iaqi?.pm10?.v);
-      setAQ('aq-co',   d.iaqi?.co?.v);
-      setAQ('aq-no2',  d.iaqi?.no2?.v);
-      setAQ('aq-o3',   d.iaqi?.o3?.v);
-      setAQ('aq-so2',  d.iaqi?.so2?.v);
-      setAQ('aq-dew',  d.iaqi?.dew?.v);
-    })
-    .catch(() => setAllAQ('N.A.'));
-}
+async function handleSearch(e) {
+  // If e exists, it means it was triggered by an event
+  if (e) e.preventDefault(); 
+  
+  const btn = document.getElementById('btn-search');
+  const regionInput = document.getElementById('region-input').value.trim();
+  const citySelect = document.getElementById('city-select').value;
 
-function setAQ(id, val) {
-  document.getElementById(id).textContent =
-    (val !== undefined && val !== null) ? val : 'N.A.';
-}
-function setAllAQ(val) {
-  ['aq-aqi','aq-pm25','aq-pm10','aq-co','aq-no2','aq-o3','aq-so2','aq-dew']
-    .forEach(id => setAQ(id, val));
-}
-
-// ── LOG BUTTON ────────────────────────────────────────────────
-btnLog.addEventListener('click', () => {
-  const url = `${PHP_FILE}?username=${encodeURIComponent(ENV.USERNAME)}`;
-
-  fetch(url)
-    .then(r => {
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      return r.json();
-    })
-    .then(rows => renderLogModal(rows))
-    .catch(err => {
-      console.error('Log fetch error:', err);
-      renderLogModal([]);
-    });
-});
-
-function renderLogModal(rows) {
-  const tbody = document.getElementById('log-tbody');
-  tbody.innerHTML = '';
-
-  if (!rows || rows.length === 0) {
-    tbody.innerHTML =
-      '<tr><td colspan="4" class="text-center" style="color:var(--text-muted)">No records found.</td></tr>';
-  } else {
-    rows.forEach(row => {
-      const ts  = formatLocalDateTime(row.timestamp);
-      const tr  = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${ts}</td>
-        <td>${row.region  ?? '—'}</td>
-        <td>${row.city    ?? '—'}</td>
-        <td>${row.country ?? '—'}</td>
-      `;
-      tbody.appendChild(tr);
-    });
+  // 1. Basic validation
+  if (!regionInput || !citySelect) {
+    alert("Please enter both a region and select a city.");
+    return;
   }
 
-  new bootstrap.Modal(document.getElementById('logModal')).show();
+  // 2. Prevent double-clicks and show loading state
+  btn.disabled = true;
+  document.getElementById('loading-overlay').classList.add('active');
+
+  try {
+    // 3. Save interaction to DB 
+    if (typeof saveToDatabase === 'function') {
+      saveToDatabase(regionInput, citySelect);
+    }
+
+    // 4. Combine inputs and Geocode via Nominatim
+    const searchQuery = `${citySelect}, ${regionInput}, Cyprus`; 
+    const coords = await getCoordinates(searchQuery);
+
+    if (coords) {
+      console.log(`Coordinates found! Lat: ${coords.lat}, Lon: ${coords.lon}`);
+
+      // 5. Un-hide all UI sections FIRST so maps/charts have a valid target size
+      document.getElementById('divider-1').classList.remove('hidden');
+      document.getElementById('results-section').classList.remove('hidden');
+      document.getElementById('divider-2').classList.remove('hidden'); 
+      document.getElementById('charts-section').classList.remove('hidden');
+      document.getElementById('divider-3').classList.remove('hidden'); 
+      document.getElementById('aq-section').classList.remove('hidden');
+
+      // 6. Update Map 
+      if (typeof updateMapCenter === 'function') {
+        updateMapCenter(coords.lat, coords.lon);
+        if (typeof weatherMap !== 'undefined' && weatherMap) {
+          setTimeout(() => weatherMap.updateSize(), 100); 
+        }
+      }
+
+      // 7. Fetch Current Weather & Air Quality
+      if (typeof fetchWeather === 'function') fetchWeather(coords.lat, coords.lon);
+      if (typeof fetchAirQuality === 'function') fetchAirQuality(coords.lat, coords.lon);
+
+      // 8. Fetch Forecast and display charts 
+      if (typeof fetchForecastWeather === 'function' && typeof displayCharts === 'function') {
+        const fcData = await fetchForecastWeather(coords.lat, coords.lon);
+        displayCharts(fcData, regionInput, citySelect);
+      }
+
+    } else {
+      alert("Could not find coordinates for that location. Please try again.");
+    }
+  } catch (err) {
+    console.error('Search error:', err);
+    alert('An error occurred while fetching data. Please try again.');
+  } finally {
+    // 9. ALWAYS hide loading overlay and re-enable button
+    document.getElementById('loading-overlay').classList.remove('active');
+    btn.disabled = false;
+  }
+}
+
+/**
+ * Fetch current weather from OpenWeatherMap and update the DOM
+ */
+async function fetchWeather(lat, lon) {
+  // Use metric units to get Celsius
+  const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${OWM_KEY}&units=metric`;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Weather data not found");
+    const data = await response.json();
+
+    // 1. Extract and round temperatures
+    const temp = Math.round(data.main.temp);
+    const tempMin = Math.round(data.main.temp_min);
+    const tempMax = Math.round(data.main.temp_max);
+    const t = data.main.temp;       // Exact temperature in Celsius
+    const rh = data.main.humidity;  // Relative humidity percentage
+
+    // Constants for the formula
+    const a = 17.27;
+    const b = 237.7;
+    
+    // The calculation
+    const alpha = ((a * t) / (b + t)) + Math.log(rh / 100.0);
+    const dewPoint = (b * alpha) / (a - alpha);
+    
+    // 2. Format sunrise and sunset timestamps (Convert Unix UTC to local time)
+    const formatTime = (unixTime) => {
+      const date = new Date(unixTime * 1000);
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
+    // 3. Update the DOM elements using the IDs from your HTML
+    document.getElementById('weather-temp-val').textContent = temp;
+    document.getElementById('w-temp-min').textContent = `L:${tempMin}°C`;
+    document.getElementById('w-temp-max').textContent = `H:${tempMax}°C`;
+    document.getElementById('weather-description').textContent = data.weather[0].description;
+    document.getElementById('aq-dew').textContent = Math.round(dewPoint);
+    // Grab the high-res 4x icon from OpenWeatherMap
+    const iconCode = data.weather[0].icon;
+    document.getElementById('weather-icon').src = `https://openweathermap.org/img/wn/${iconCode}@4x.png`;
+
+    // Update the weather table
+    document.getElementById('w-pressure').textContent = `${data.main.pressure} hPa`;
+    document.getElementById('w-humidity').textContent = `${data.main.humidity}%`;
+    document.getElementById('w-wind').textContent = `${data.wind.speed} m/s`;
+    document.getElementById('w-clouds').textContent = `${data.clouds.all}%`;
+    document.getElementById('w-sunrise').textContent = formatTime(data.sys.sunrise);
+    document.getElementById('w-sunset').textContent = formatTime(data.sys.sunset);
+
+  } catch (error) {
+    console.error("Error fetching weather:", error);
+  }
+}
+
+/**
+ * Fetch Air Quality Index from AQICN and update the DOM
+ */
+async function fetchAirQuality(lat, lon) {
+  const url = `https://api.waqi.info/feed/geo:${lat};${lon}/?token=${AQICN_KEY}`;
+  
+  try {
+    const response = await fetch(url);
+    const json = await response.json();
+    
+    if (json.status === "ok") {
+      const iaqi = json.data.iaqi; // The specific pollutant data
+      
+      // Update the main AQI score
+      document.getElementById('aq-aqi').textContent = json.data.aqi || '--';
+      
+      // Update individual pollutants (Check if they exist first, as some stations don't track everything)
+      document.getElementById('aq-pm25').textContent = iaqi.pm25 ? iaqi.pm25.v : '--';
+      document.getElementById('aq-pm10').textContent = iaqi.pm10 ? iaqi.pm10.v : '--';
+      document.getElementById('aq-co').textContent = iaqi.co ? iaqi.co.v : '--';
+      document.getElementById('aq-no2').textContent = iaqi.no2 ? iaqi.no2.v : '--';
+      document.getElementById('aq-o3').textContent = iaqi.o3 ? iaqi.o3.v : '--';
+      document.getElementById('aq-so2').textContent = iaqi.so2 ? iaqi.so2.v : '--';
+      document.getElementById('aq-dew').textContent = iaqi.d ? iaqi.d.v : '--';
+    }
+  } catch (error) {
+    console.error("Error fetching Air Quality:", error);
+  }
 }
 
 // ── DATE / TIME HELPERS ───────────────────────────────────────
