@@ -1,29 +1,27 @@
 /* ================================================================
    ADVANCED WEATHER DASHBOARD — src/script.js
-   
+
    Credentials are injected from .env at deploy time via PHP.
    At runtime the page reads them from window.ENV (set by
    php/env.php which is included in index.html on the CS server).
-   
-   For local testing without PHP, fall back to the constants below.
    ================================================================ */
 
 'use strict';
 
 // ── CONFIG ────────────────────────────────────────────────────
-// Locally you can set these directly for testing:
-const OWM_KEY = window.ENV.OWM_KEY;
-const AQICN_KEY = window.ENV.AQICN_KEY;
-const USERNAME = window.ENV.USERNAME || "student_test";
-const PHP_FILE = 'php/weather.php';
+const OWM_KEY   = window.ENV?.OWM_KEY   || '';
+const AQICN_KEY = window.ENV?.AQICN_KEY || '';
+const USERNAME  = window.ENV?.USERNAME  || 'student_test';
+const PHP_FILE  = 'php/weather.php';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun',
                 'Jul','Aug','Sep','Oct','Nov','Dec'];
 
 // ── STATE ─────────────────────────────────────────────────────
-let olMap        = null;
-let layerTemp    = null;
-let layerPrecip  = null;
+let weatherMap   = null;   // OpenLayers map instance
+let markerLayer  = null;   // OL vector layer for the pin
+let layerTemp    = null;   // OWM temperature tile layer
+let layerPrecip  = null;   // OWM precipitation tile layer
 let forecastData = null;   // cached 5-day forecast response
 
 // ── DOM REFERENCES ────────────────────────────────────────────
@@ -75,138 +73,8 @@ function validate() {
   return valid;
 }
 
-/**
- * Sends a POST request to weather.php to log the search
- */
-async function saveToDatabase(region, city) {
-  try {
-    const payload = {
-      username: USERNAME,
-      region: region,
-      city: city,
-      country: "Cyprus" // Your PHP expects this!
-    };
-
-    const response = await fetch('php/weather.php', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    if (response.status === 201) {
-      console.log("Database log successful (or gracefully skipped locally).");
-    } else {
-      console.warn("Backend warning:", await response.text());
-    }
-  } catch (error) {
-    console.error("Failed to connect to weather.php for logging:", error);
-  }
-}
-
-/**
- * Fetches the last 5 searches from the database and opens the modal
- */
-document.getElementById('btn-log').addEventListener('click', async () => {
-  const tbody = document.getElementById('log-tbody');
-  
-  // Show a loading message in the table while it fetches
-  tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Loading logs...</td></tr>';
-  
-  // Open the Bootstrap modal immediately so the user knows something is happening
-  const logModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('logModal'));
-  logModal.show();
-
-  try {
-    // 1. Send GET request to weather.php with your username
-    const response = await fetch(`php/weather.php?username=${encodeURIComponent(USERNAME)}`);
-    const data = await response.json();
-
-    // 2. Clear the loading message
-    tbody.innerHTML = ''; 
-
-    // 3. Populate the table
-    if (data.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No logs found. (DB might be skipped locally)</td></tr>';
-    } else {
-      data.forEach(log => {
-        // Convert the UNIX timestamp (seconds) from PHP back into a readable Date
-        const date = new Date(log.timestamp * 1000);
-        const timeString = date.toLocaleString([], { 
-          month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
-        });
-
-        // Create the table row
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${timeString}</td>
-          <td>${log.region}</td>
-          <td>${log.city}</td>
-          <td>${log.country}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-  } catch (error) {
-    console.error("Error fetching logs:", error);
-    tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Failed to load logs.</td></tr>';
-  }
-});
-
-
-/**
- * Geocode a location using Nominatim first, with OpenWeatherMap as a fallback
- * @param {string} city - The city to search for
- * @param {string} region - The region to search for
- * @returns {Promise<Object|null>} - Returns {lat, lon} or null if both APIs fail
- */
-async function getCoordinates(city, region) {
-  // 1. Try Nominatim (Primary)
-  const nominatimUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)},${encodeURIComponent(region)},Cyprus&format=json&limit=1`;
-
-  try {
-    const nomResponse = await fetch(nominatimUrl);
-    if (nomResponse.ok) {
-      const nomData = await nomResponse.json();
-      if (nomData && nomData.length > 0) {
-        console.log("📍 Coordinates found via Nominatim!");
-        return {
-          lat: parseFloat(nomData[0].lat),
-          lon: parseFloat(nomData[0].lon)
-        };
-      }
-    }
-  } catch (error) {
-    console.warn("Nominatim blocked the request (CORS/Rate Limit). Switching to fallback API...");
-  }
-
-  // 2. Try OpenWeatherMap Geocoding API (Fallback)
-  // We use the city and 'CY' (country code for Cyprus)
-  const owmUrl = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(city)},CY&limit=1&appid=${OWM_KEY}`;
-  
-  try {
-    const owmResponse = await fetch(owmUrl);
-    if (owmResponse.ok) {
-      const owmData = await owmResponse.json();
-      if (owmData && owmData.length > 0) {
-        console.log("📍 Coordinates found via OpenWeatherMap Fallback!");
-        return {
-          lat: owmData[0].lat,
-          lon: owmData[0].lon
-        };
-      }
-    }
-  } catch (error) {
-    console.error("OpenWeatherMap Fallback also failed:", error);
-  }
-
-  // 3. If both APIs fail or the city doesn't exist
-  console.error("Could not find coordinates using any API.");
-  return null;
-}
 // ── CLEAR ─────────────────────────────────────────────────────
 function clearAll() {
-  // Reset inputs
   regionInput.value = '';
   citySelect.value  = '';
   regionInput.classList.remove('is-invalid');
@@ -214,16 +82,17 @@ function clearAll() {
   regionError.classList.remove('visible');
   cityError.classList.remove('visible');
 
-  // Hide result sections
+  // Hide all result sections
   [resultsSection, chartsSection, aqSection,
    divider1, divider2, divider3].forEach(el => el.classList.add('hidden'));
 
   // Destroy map and layers
-  if (olMap) {
-    if (layerTemp)   olMap.removeLayer(layerTemp);
-    if (layerPrecip) olMap.removeLayer(layerPrecip);
-    olMap.setTarget(null);
-    olMap       = null;
+  if (weatherMap) {
+    if (layerTemp)   weatherMap.removeLayer(layerTemp);
+    if (layerPrecip) weatherMap.removeLayer(layerPrecip);
+    weatherMap.setTarget(null);
+    weatherMap  = null;
+    markerLayer = null;
     layerTemp   = null;
     layerPrecip = null;
   }
@@ -231,153 +100,267 @@ function clearAll() {
   forecastData = null;
 }
 
-// ── SEARCH HANDLER ────────────────────────────────────────────
+// ── EVENT LISTENERS ───────────────────────────────────────────
 btnSearch.addEventListener('click', handleSearch);
 btnClear.addEventListener('click', clearAll);
 
-// ── SHOW / HIDE UI SECTIONS ───────────────────────────────────
-function showResultsUI() {
+// ── SEARCH HANDLER ────────────────────────────────────────────
+async function handleSearch(e) {
+  if (e) e.preventDefault();
+
+  if (!validate()) return;
+
+  const region = regionInput.value.trim();
+  const city   = citySelect.value;
+
+  // Prevent double-clicks
+  btnSearch.disabled = true;
+  showLoading();
+
+  try {
+    // (a) Save interaction to DB — fire and forget
+    saveToDatabase(region, city);
+
+    // (b) Geocode — Nominatim primary, OWM fallback
+    const coords = await getCoordinates(city, region);
+
+    if (!coords) {
+      alert('No result for that location. Please try a different region or city.');
+      return;
+    }
+
+    const { lat, lon } = coords;
+
+    // Show all sections before rendering so map/charts have valid dimensions
+    showAllSections(region, city);
+
+    // Run weather fetches in parallel
+    const [fcData] = await Promise.all([
+      fetchForecastWeather(lat, lon),
+      fetchWeather(lat, lon),
+      fetchAirQuality(lat, lon),
+    ]);
+
+    // Map needs the section visible first
+    updateMapCenter(lat, lon);
+
+    // Charts use the already-returned forecast data
+    displayCharts(fcData, region, city);
+
+  } catch (err) {
+    console.error('Search error:', err);
+    alert('An error occurred while fetching data. Please try again.');
+  } finally {
+    hideLoading();
+    btnSearch.disabled = false;
+  }
+}
+
+// ── SHOW ALL SECTIONS ─────────────────────────────────────────
+function showAllSections(region, city) {
   divider1.classList.remove('hidden');
   resultsSection.classList.remove('hidden');
-}
-function showChartsUI(region, city) {
   divider2.classList.remove('hidden');
   chartsSection.classList.remove('hidden');
+  divider3.classList.remove('hidden');
+  aqSection.classList.remove('hidden');
+
   document.getElementById('gauges-title').textContent =
     `Weather extremes for ${region}, ${city} within next 5 days`;
   document.getElementById('charts-title').textContent =
     `Weather Forecast for ${region}, ${city}`;
-}
-function showAQUI(region, city) {
-  divider3.classList.remove('hidden');
-  aqSection.classList.remove('hidden');
   document.getElementById('aq-title').textContent =
     `Air Quality for ${region}, ${city}`;
 }
 
-// ── CURRENT WEATHER ───────────────────────────────────────────
-async function fetchCurrentWeather(lat, lon) {
-  const url =
-    `https://api.openweathermap.org/data/2.5/weather` +
-    `?lat=${lat}&lon=${lon}&units=metric&APPID=${ENV.OWM_KEY}`;
+// ── DATABASE SAVE ─────────────────────────────────────────────
+/**
+ * Sends a POST request to weather.php to log the search.
+ * Fails silently — DB is skipped locally when DB_HOST is blank.
+ */
+async function saveToDatabase(region, city) {
+  try {
+    const response = await fetch(PHP_FILE, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        username: USERNAME,
+        region,
+        city,
+        country: 'Cyprus',
+      }),
+    });
 
-  const res  = await fetch(url);
-  const data = await res.json();
-  displayCurrentWeather(data);
-  return data;
+    if (response.status === 201) {
+      console.log('DB log successful (or gracefully skipped locally).');
+    } else {
+      console.warn('Backend warning:', await response.text());
+    }
+  } catch (err) {
+    console.error('Failed to connect to weather.php for logging:', err);
+  }
 }
 
-function displayCurrentWeather(d) {
-  const na = 'N.A.';
+// ── LOG BUTTON ────────────────────────────────────────────────
+/**
+ * Fetches the last 5 searches from the DB and opens the log modal.
+ * Shows a loading state in the table while fetching.
+ */
+btnLog.addEventListener('click', async () => {
+  const tbody    = document.getElementById('log-tbody');
+  const logModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('logModal'));
 
-  // Icon
-  const icon = d.weather?.[0]?.icon;
-  document.getElementById('weather-icon').src =
-    icon ? `https://openweathermap.org/img/wn/${icon}@2x.png` : '';
+  // Show loading state immediately
+  tbody.innerHTML =
+    '<tr><td colspan="4" class="text-center" style="color:var(--text-muted)">Loading…</td></tr>';
+  logModal.show();
 
-  // Description + location
-  const desc = d.weather?.[0]?.description ?? na;
-  const loc  = d.name ?? na;
-  document.getElementById('weather-description').textContent = `${desc} in ${loc}`;
+  try {
+    const response = await fetch(`${PHP_FILE}?username=${encodeURIComponent(USERNAME)}`);
+    const data     = await response.json();
 
-  // Temperature
-  document.getElementById('weather-temp-val').textContent = d.main?.temp    ?? na;
-  document.getElementById('w-temp-min').textContent       = `L:${d.main?.temp_min ?? na}°C`;
-  document.getElementById('w-temp-max').textContent       = `H:${d.main?.temp_max ?? na}°C`;
+    tbody.innerHTML = '';
 
-  // Detail rows
-  document.getElementById('w-pressure').textContent = d.main?.pressure != null ? `${d.main.pressure} hPa`       : na;
-  document.getElementById('w-humidity').textContent = d.main?.humidity != null ? `${d.main.humidity} %`         : na;
-  document.getElementById('w-wind').textContent     = d.wind?.speed    != null ? `${d.wind.speed} meters/sec`   : na;
-  document.getElementById('w-clouds').textContent   = d.clouds?.all    != null ? `${d.clouds.all} %`            : na;
+    if (!data || data.length === 0) {
+      tbody.innerHTML =
+        '<tr><td colspan="4" class="text-center" style="color:var(--text-muted)">No logs found. (DB may be skipped locally)</td></tr>';
+      return;
+    }
 
-  // Sunrise / sunset — Unix UTC → local time
-  document.getElementById('w-sunrise').textContent =
-    d.sys?.sunrise ? formatLocalDateTime(d.sys.sunrise) : na;
-  document.getElementById('w-sunset').textContent =
-    d.sys?.sunset  ? formatLocalDateTime(d.sys.sunset)  : na;
+    data.forEach(log => {
+      const date       = new Date(log.timestamp * 1000);
+      const timeString = date.toLocaleString([], {
+        year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+      });
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${timeString}</td>
+        <td>${log.region  ?? '—'}</td>
+        <td>${log.city    ?? '—'}</td>
+        <td>${log.country ?? '—'}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+  } catch (err) {
+    console.error('Error fetching logs:', err);
+    tbody.innerHTML =
+      '<tr><td colspan="4" class="text-center text-danger">Failed to load logs.</td></tr>';
+  }
+});
+
+// ── GEOCODING ─────────────────────────────────────────────────
+/**
+ * Geocode a location using Nominatim first, OWM as fallback.
+ * @returns {Promise<{lat, lon}|null>}
+ */
+async function getCoordinates(city, region) {
+  // 1. Nominatim (primary)
+  const nominatimUrl =
+    `https://nominatim.openstreetmap.org/search` +
+    `?q=${encodeURIComponent(city)},${encodeURIComponent(region)},Cyprus` +
+    `&format=json&limit=1`;
+
+  try {
+    const res  = await fetch(nominatimUrl);
+    const data = await res.json();
+    if (data && data.length > 0) {
+      console.log('Coordinates found via Nominatim.');
+      return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+    }
+  } catch (err) {
+    console.warn('Nominatim failed, switching to OWM fallback:', err);
+  }
+
+  // 2. OpenWeatherMap geocoding (fallback)
+  const owmUrl =
+    `https://api.openweathermap.org/geo/1.0/direct` +
+    `?q=${encodeURIComponent(city)},CY&limit=1&appid=${OWM_KEY}`;
+
+  try {
+    const res  = await fetch(owmUrl);
+    const data = await res.json();
+    if (data && data.length > 0) {
+      console.log('Coordinates found via OWM fallback.');
+      return { lat: data[0].lat, lon: data[0].lon };
+    }
+  } catch (err) {
+    console.error('OWM fallback also failed:', err);
+  }
+
+  return null;
+}
+
+// ── CURRENT WEATHER ───────────────────────────────────────────
+/**
+ * Fetches current weather and updates the Right Now tab.
+ */
+async function fetchWeather(lat, lon) {
+  const url =
+    `https://api.openweathermap.org/data/2.5/weather` +
+    `?lat=${lat}&lon=${lon}&appid=${OWM_KEY}&units=metric`;
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Weather API error: ${res.status}`);
+    const data = await res.json();
+
+    const temp    = Math.round(data.main.temp);
+    const tempMin = Math.round(data.main.temp_min);
+    const tempMax = Math.round(data.main.temp_max);
+
+    // Dew point (Magnus approximation)
+    const t     = data.main.temp;
+    const rh    = data.main.humidity;
+    const alpha = ((17.27 * t) / (237.7 + t)) + Math.log(rh / 100.0);
+    const dew   = Math.round((237.7 * alpha) / (17.27 - alpha));
+
+    const formatTime = (unix) =>
+      new Date(unix * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // Temperature block
+    document.getElementById('weather-temp-val').textContent    = temp;
+    document.getElementById('w-temp-min').textContent          = `L:${tempMin}°C`;
+    document.getElementById('w-temp-max').textContent          = `H:${tempMax}°C`;
+    document.getElementById('weather-description').textContent = data.weather[0].description;
+
+    // Icon (4× resolution)
+    document.getElementById('weather-icon').src =
+      `https://openweathermap.org/img/wn/${data.weather[0].icon}@4x.png`;
+
+    // Detail table
+    document.getElementById('w-pressure').textContent = `${data.main.pressure} hPa`;
+    document.getElementById('w-humidity').textContent = `${data.main.humidity}%`;
+    document.getElementById('w-wind').textContent     = `${data.wind.speed} m/s`;
+    document.getElementById('w-clouds').textContent   = `${data.clouds.all}%`;
+    document.getElementById('w-sunrise').textContent  = formatTime(data.sys.sunrise);
+    document.getElementById('w-sunset').textContent   = formatTime(data.sys.sunset);
+
+    // Dew point — set here from weather data (more accurate than AQICN)
+    document.getElementById('aq-dew').textContent = dew;
+
+  } catch (err) {
+    console.error('Error fetching current weather:', err);
+  }
 }
 
 // ── FORECAST ─────────────────────────────────────────────────
+/**
+ * Fetches 5-day / 3-hour forecast, populates the Next 24h table,
+ * and returns the full data for chart rendering.
+ */
 async function fetchForecastWeather(lat, lon) {
   const url =
     `https://api.openweathermap.org/data/2.5/forecast` +
-    `?lat=${lat}&lon=${lon}&units=metric&APPID=${ENV.OWM_KEY}`;
+    `?lat=${lat}&lon=${lon}&units=metric&appid=${OWM_KEY}`;
 
   const res  = await fetch(url);
   const data = await res.json();
   forecastData = data;
   populateForecastTable(data);
   return data;
-}
-
-// Keep track of the map and marker layer globally so we can update them later
-let weatherMap;
-let markerLayer;
-
-/**
- * Updates the OpenLayers map to center on new coordinates and drop a marker
- * @param {number} lat - Latitude
- * @param {number} lon - Longitude
- */
-function updateMapCenter(lat, lon) {
-  // 1. Convert standard Lat/Lon to OpenLayers Web Mercator projection
-  // WARNING: OpenLayers requires [Longitude, Latitude] order!
-  const coords = ol.proj.fromLonLat([lon, lat]);
-
-  if (!weatherMap) {
-    // --- CREATE THE MAP (First Search Only) ---
-
-    // Create a vector source and layer for our map marker
-    const markerSource = new ol.source.Vector();
-    markerLayer = new ol.layer.Vector({ source: markerSource });
-
-    // Initialize the map inside the <div id="map">
-    weatherMap = new ol.Map({
-      target: 'map',
-      layers: [
-        // The base map layer (OpenStreetMap)
-        new ol.layer.Tile({
-          source: new ol.source.OSM()
-        }),
-        // Our marker layer on top
-        markerLayer
-      ],
-      view: new ol.View({
-        center: coords,
-        zoom: 12 // Zoom level (12 is good for a city view)
-      })
-    });
-  } else {
-    // --- UPDATE THE MAP (Subsequent Searches) ---
-    
-    // Smoothly pan the map to the new city
-    weatherMap.getView().animate({
-      center: coords,
-      zoom: 12,
-      duration: 1000 // 1 second animation
-    });
-  }
-
-  // --- UPDATE THE MARKER ---
-  
-  // Create a new point geometry for the marker
-  const marker = new ol.Feature({
-    geometry: new ol.geom.Point(coords)
-  });
-
-  // Style the marker (A nice red circle to match your UI's var(--clr-danger))
-  marker.setStyle(new ol.style.Style({
-    image: new ol.style.Circle({
-      radius: 9,
-      fill: new ol.style.Fill({ color: '#ff4d6d' }),
-      stroke: new ol.style.Stroke({ color: '#ffffff', width: 2 })
-    })
-  }));
-
-  // Clear any old markers and add the new one
-  markerLayer.getSource().clear();
-  markerLayer.getSource().addFeature(marker);
 }
 
 function populateForecastTable(data) {
@@ -388,10 +371,9 @@ function populateForecastTable(data) {
   const entries = (data.list ?? []).slice(0, 8);
 
   entries.forEach((item, idx) => {
-    const dt     = new Date(item.dt * 1000);
     const icon   = item.weather?.[0]?.icon ?? '';
-    const temp   = item.main?.temp  != null ? item.main.temp.toFixed(2)  : 'N.A.';
-    const clouds = item.clouds?.all != null ? `${item.clouds.all} %`     : 'N.A.';
+    const temp   = item.main?.temp  != null ? item.main.temp.toFixed(2) : 'N.A.';
+    const clouds = item.clouds?.all != null ? `${item.clouds.all}%`     : 'N.A.';
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -413,7 +395,7 @@ function populateForecastTable(data) {
   });
 }
 
-// Exposed globally so inline onclick can reach it
+// ── FORECAST MODAL ────────────────────────────────────────────
 function openForecastModal(idx) {
   if (!forecastData) return;
 
@@ -421,7 +403,6 @@ function openForecastModal(idx) {
   const cityName = forecastData.city?.name ?? 'Unknown';
   const na       = 'N.A.';
 
-  // Modal title: "Weather in {city} on {d Mon YYYY HH:MM}"
   document.getElementById('forecastModalTitle').textContent =
     `Weather in ${cityName} on ${formatModalDateTime(item.dt)}`;
 
@@ -433,37 +414,129 @@ function openForecastModal(idx) {
   document.getElementById('modal-weather-text').textContent = `${main} (${desc})`;
 
   document.getElementById('modal-humidity').textContent =
-    item.main?.humidity != null ? `${item.main.humidity} %`       : na;
+    item.main?.humidity != null ? `${item.main.humidity}%`    : na;
   document.getElementById('modal-pressure').textContent =
-    item.main?.pressure != null ? `${item.main.pressure} hPa`     : na;
+    item.main?.pressure != null ? `${item.main.pressure} hPa` : na;
   document.getElementById('modal-wind').textContent =
-    item.wind?.speed    != null ? `${item.wind.speed} meters/sec` : na;
+    item.wind?.speed    != null ? `${item.wind.speed} m/s`    : na;
 
   new bootstrap.Modal(document.getElementById('forecastModal')).show();
 }
 
-// Make it accessible from inline HTML onclick
+// Expose for inline onclick in populateForecastTable
 window.openForecastModal = openForecastModal;
+
+// ── MAP (OpenLayers) ──────────────────────────────────────────
+/**
+ * Creates the map on first call, smoothly pans on subsequent calls.
+ * Adds a styled pin marker and two OWM weather tile layers.
+ */
+function updateMapCenter(lat, lon) {
+  const coords = ol.proj.fromLonLat([lon, lat]);
+
+  if (!weatherMap) {
+    // ── First search: build the map ──
+    const markerSource = new ol.source.Vector();
+    markerLayer = new ol.layer.Vector({ source: markerSource });
+
+    layerTemp = new ol.layer.Tile({
+      source: new ol.source.XYZ({
+        url: `https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`,
+      }),
+      opacity: 0.5,
+    });
+
+    layerPrecip = new ol.layer.Tile({
+      source: new ol.source.XYZ({
+        url: `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${OWM_KEY}`,
+      }),
+      opacity: 0.5,
+    });
+
+    weatherMap = new ol.Map({
+      target: 'map',
+      layers: [
+        new ol.layer.Tile({ source: new ol.source.OSM() }),
+        layerTemp,
+        layerPrecip,
+        markerLayer,
+      ],
+      view: new ol.View({ center: coords, zoom: 5 }),
+    });
+
+    setTimeout(() => weatherMap.updateSize(), 100);
+
+  } else {
+    // ── Subsequent searches: animate pan ──
+    weatherMap.getView().animate({ center: coords, zoom: 5, duration: 800 });
+  }
+
+  // Drop a styled red pin at the searched location
+  const marker = new ol.Feature({ geometry: new ol.geom.Point(coords) });
+  marker.setStyle(new ol.style.Style({
+    image: new ol.style.Circle({
+      radius: 9,
+      fill:   new ol.style.Fill({ color: '#ff4d6d' }),
+      stroke: new ol.style.Stroke({ color: '#ffffff', width: 2 }),
+    }),
+  }));
+
+  markerLayer.getSource().clear();
+  markerLayer.getSource().addFeature(marker);
+}
+
+// ── AIR QUALITY (AQICN) ───────────────────────────────────────
+/**
+ * Fetches AQI using lat/lon geolocalized feed.
+ * Dew point is intentionally left to fetchWeather (more accurate).
+ */
+async function fetchAirQuality(lat, lon) {
+  const url = `https://api.waqi.info/feed/geo:${lat};${lon}/?token=${AQICN_KEY}`;
+
+  try {
+    const res  = await fetch(url);
+    const json = await res.json();
+
+    if (json.status !== 'ok') return;
+
+    const iaqi = json.data.iaqi;
+    document.getElementById('aq-aqi').textContent  = json.data.aqi ?? '--';
+    document.getElementById('aq-pm25').textContent = iaqi.pm25?.v  ?? '--';
+    document.getElementById('aq-pm10').textContent = iaqi.pm10?.v  ?? '--';
+    document.getElementById('aq-co').textContent   = iaqi.co?.v    ?? '--';
+    document.getElementById('aq-no2').textContent  = iaqi.no2?.v   ?? '--';
+    document.getElementById('aq-o3').textContent   = iaqi.o3?.v    ?? '--';
+    document.getElementById('aq-so2').textContent  = iaqi.so2?.v   ?? '--';
+    // Dew is set by fetchWeather; only fall back to AQICN if still unset
+    const dewEl = document.getElementById('aq-dew');
+    if (!dewEl.textContent || dewEl.textContent === '--') {
+      dewEl.textContent = iaqi.dew?.v ?? '--';
+    }
+
+  } catch (err) {
+    console.error('Error fetching air quality:', err);
+  }
+}
 
 // ── CHARTS (Plotly) ───────────────────────────────────────────
 function displayCharts(data, region, city) {
   const list      = data.list ?? [];
   const times     = list.map(i => i.dt_txt);
-  const temps     = list.map(i => i.main?.temp      ?? null);
-  const humids    = list.map(i => i.main?.humidity  ?? null);
-  const pressures = list.map(i => i.main?.pressure  ?? null);
+  const temps     = list.map(i => i.main?.temp     ?? null);
+  const humids    = list.map(i => i.main?.humidity ?? null);
+  const pressures = list.map(i => i.main?.pressure ?? null);
 
-  const maxTemp  = Math.max(...temps.filter(v => v !== null));
-  const maxHumid = Math.max(...humids.filter(v => v !== null));
-  const maxPress = Math.max(...pressures.filter(v => v !== null));
+  const maxTemp  = Math.max(...temps.filter(Boolean));
+  const maxHumid = Math.max(...humids.filter(Boolean));
+  const maxPress = Math.max(...pressures.filter(Boolean));
 
-  // ── Shared layout pieces ──
-  const paperBg = 'rgba(0,0,0,0)';
-  const plotBg  = 'rgba(255,255,255,0.02)';
-  const fontClr = '#7ba8be';
-  const gridClr = 'rgba(255,255,255,0.06)';
+  const paperBg     = 'rgba(0,0,0,0)';
+  const plotBg      = 'rgba(255,255,255,0.02)';
+  const fontClr     = '#a8cfe0';
+  const gridClr     = 'rgba(255,255,255,0.06)';
   const gaugeMargin = { l: 30, r: 30, t: 50, b: 10 };
 
+  // ── Gauges ──
   function gaugeTrace(value, title, color, rangeMax) {
     return {
       domain:  { x: [0, 1], y: [0, 1] },
@@ -471,49 +544,53 @@ function displayCharts(data, region, city) {
       title:   { text: title, font: { size: 13, color: fontClr } },
       type:    'indicator',
       mode:    'gauge+number',
-      number:  { font: { color: '#dff0f8' } },
+      number:  { font: { color: '#ffffff' } },
       gauge: {
-        axis: { range: [null, rangeMax], tickwidth: 1, tickcolor: fontClr },
-        bar:  { color },
+        axis:    { range: [null, rangeMax], tickwidth: 1, tickcolor: fontClr },
+        bar:     { color },
         bgcolor: 'rgba(255,255,255,0.04)',
       },
     };
   }
 
   const gaugeLayout = {
-    margin: gaugeMargin,
-    height: 230,
+    margin:        gaugeMargin,
+    height:        230,
     paper_bgcolor: paperBg,
-    font: { color: fontClr },
+    font:          { color: fontClr },
   };
 
   Plotly.newPlot('gauge-temp',
-    [gaugeTrace(maxTemp,  'Max Temperature (C)',  'darkblue',  50)],
+    [gaugeTrace(maxTemp,  'Max Temperature (C)', 'darkblue',  50)],
     gaugeLayout, { responsive: true });
 
   Plotly.newPlot('gauge-humidity',
-    [gaugeTrace(maxHumid, 'Max Humidity (%)',     'darkred',   100)],
+    [gaugeTrace(maxHumid, 'Max Humidity (%)',    'darkred',   100)],
     gaugeLayout, { responsive: true });
 
   Plotly.newPlot('gauge-pressure',
-    [gaugeTrace(maxPress, 'Max Pressure (hPa)',   'darkgreen', 1100)],
+    [gaugeTrace(maxPress, 'Max Pressure (hPa)',  'darkgreen', 1100)],
     gaugeLayout, { responsive: true });
 
   // ── Line charts ──
   function lineLayout(title) {
     return {
-      title:   { text: title, font: { size: 13, color: '#dff0f8' } },
-      margin:  { l: 50, r: 15, t: 40, b: 55 },
-      height:  230,
+      title:         { text: title, font: { size: 13, color: '#ffffff' } },
+      margin:        { l: 50, r: 15, t: 40, b: 55 },
+      height:        230,
       paper_bgcolor: paperBg,
       plot_bgcolor:  plotBg,
-      font:   { color: fontClr },
-      xaxis:  { color: fontClr, gridcolor: gridClr, tickfont: { size: 10 } },
-      yaxis:  { color: fontClr, gridcolor: gridClr },
+      font:          { color: fontClr },
+      xaxis:         { color: fontClr, gridcolor: gridClr, tickfont: { size: 10 } },
+      yaxis:         { color: fontClr, gridcolor: gridClr },
     };
   }
 
-  const lineStyle = { mode: 'lines+markers', line: { color: '#60a5fa' }, marker: { color: '#60a5fa', size: 4 } };
+  const lineStyle = {
+    mode:   'lines+markers',
+    line:   { color: '#60a5fa' },
+    marker: { color: '#60a5fa', size: 4 },
+  };
 
   Plotly.newPlot('chart-temp',
     [{ x: times, y: temps,     ...lineStyle }],
@@ -526,201 +603,6 @@ function displayCharts(data, region, city) {
   Plotly.newPlot('chart-pressure',
     [{ x: times, y: pressures, ...lineStyle }],
     lineLayout('Pressure (hPa)'), { responsive: true });
-}
-
-// ── MAP (OpenLayers) ──────────────────────────────────────────
-function createMap(lat, lon) {
-  // Clean up any previous instance
-  if (olMap) {
-    olMap.setTarget(null);
-    olMap = null;
-  }
-
-  olMap = new ol.Map({
-    target: 'map',
-    layers: [
-      new ol.layer.Tile({ source: new ol.source.OSM() }),
-    ],
-    view: new ol.View({
-      center: ol.proj.fromLonLat([lon, lat]),
-      zoom:   5,
-    }),
-  });
-
-  layerTemp = new ol.layer.Tile({
-    source: new ol.source.XYZ({
-      url: `https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${ENV.OWM_KEY}`,
-    }),
-    opacity: 0.5,
-  });
-
-  layerPrecip = new ol.layer.Tile({
-    source: new ol.source.XYZ({
-      url: `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${ENV.OWM_KEY}`,
-    }),
-    opacity: 0.5,
-  });
-
-  olMap.addLayer(layerTemp);
-  olMap.addLayer(layerPrecip);
-
-  // Force size recalculation after section becomes visible
-  setTimeout(() => olMap.updateSize(), 100);
-}
-
-
-async function handleSearch(e) {
-  // If e exists, it means it was triggered by an event
-  if (e) e.preventDefault(); 
-  
-  const btn = document.getElementById('btn-search');
-  const regionInput = document.getElementById('region-input').value.trim();
-  const citySelect = document.getElementById('city-select').value;
-
-  // 1. Basic validation
-  if (!regionInput || !citySelect) {
-    alert("Please enter both a region and select a city.");
-    return;
-  }
-
-  // 2. Prevent double-clicks and show loading state
-  btn.disabled = true;
-  document.getElementById('loading-overlay').classList.add('active');
-
-  try {
-    // 3. Save interaction to DB 
-    if (typeof saveToDatabase === 'function') {
-      saveToDatabase(regionInput, citySelect);
-    }
-    // 4. Geocode using Primary and Fallback APIs
-    const coords = await getCoordinates(citySelect, regionInput);
-
-    if (coords) {
-      console.log(`Coordinates found! Lat: ${coords.lat}, Lon: ${coords.lon}`);
-
-      // 5. Un-hide all UI sections FIRST so maps/charts have a valid target size
-      document.getElementById('divider-1').classList.remove('hidden');
-      document.getElementById('results-section').classList.remove('hidden');
-      document.getElementById('divider-2').classList.remove('hidden'); 
-      document.getElementById('charts-section').classList.remove('hidden');
-      document.getElementById('divider-3').classList.remove('hidden'); 
-      document.getElementById('aq-section').classList.remove('hidden');
-
-      // 6. Update Map 
-      if (typeof updateMapCenter === 'function') {
-        updateMapCenter(coords.lat, coords.lon);
-        if (typeof weatherMap !== 'undefined' && weatherMap) {
-          setTimeout(() => weatherMap.updateSize(), 100); 
-        }
-      }
-
-      // 7. Fetch Current Weather & Air Quality
-      if (typeof fetchWeather === 'function') fetchWeather(coords.lat, coords.lon);
-      if (typeof fetchAirQuality === 'function') fetchAirQuality(coords.lat, coords.lon);
-
-      // 8. Fetch Forecast and display charts 
-      if (typeof fetchForecastWeather === 'function' && typeof displayCharts === 'function') {
-        const fcData = await fetchForecastWeather(coords.lat, coords.lon);
-        displayCharts(fcData, regionInput, citySelect);
-      }
-
-    } else {
-      alert("Could not find coordinates for that location. Please try again.");
-    }
-  } catch (err) {
-    console.error('Search error:', err);
-    alert('An error occurred while fetching data. Please try again.');
-  } finally {
-    // 9. ALWAYS hide loading overlay and re-enable button
-    document.getElementById('loading-overlay').classList.remove('active');
-    btn.disabled = false;
-  }
-}
-
-/**
- * Fetch current weather from OpenWeatherMap and update the DOM
- */
-async function fetchWeather(lat, lon) {
-  // Use metric units to get Celsius
-  const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${OWM_KEY}&units=metric`;
-
-  try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error("Weather data not found");
-    const data = await response.json();
-
-    // 1. Extract and round temperatures
-    const temp = Math.round(data.main.temp);
-    const tempMin = Math.round(data.main.temp_min);
-    const tempMax = Math.round(data.main.temp_max);
-    const t = data.main.temp;       // Exact temperature in Celsius
-    const rh = data.main.humidity;  // Relative humidity percentage
-
-    // Constants for the formula
-    const a = 17.27;
-    const b = 237.7;
-    
-    // The calculation
-    const alpha = ((a * t) / (b + t)) + Math.log(rh / 100.0);
-    const dewPoint = (b * alpha) / (a - alpha);
-    
-    // 2. Format sunrise and sunset timestamps (Convert Unix UTC to local time)
-    const formatTime = (unixTime) => {
-      const date = new Date(unixTime * 1000);
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    };
-
-    // 3. Update the DOM elements using the IDs from your HTML
-    document.getElementById('weather-temp-val').textContent = temp;
-    document.getElementById('w-temp-min').textContent = `L:${tempMin}°C`;
-    document.getElementById('w-temp-max').textContent = `H:${tempMax}°C`;
-    document.getElementById('weather-description').textContent = data.weather[0].description;
-    document.getElementById('aq-dew').textContent = Math.round(dewPoint);
-    // Grab the high-res 4x icon from OpenWeatherMap
-    const iconCode = data.weather[0].icon;
-    document.getElementById('weather-icon').src = `https://openweathermap.org/img/wn/${iconCode}@4x.png`;
-
-    // Update the weather table
-    document.getElementById('w-pressure').textContent = `${data.main.pressure} hPa`;
-    document.getElementById('w-humidity').textContent = `${data.main.humidity}%`;
-    document.getElementById('w-wind').textContent = `${data.wind.speed} m/s`;
-    document.getElementById('w-clouds').textContent = `${data.clouds.all}%`;
-    document.getElementById('w-sunrise').textContent = formatTime(data.sys.sunrise);
-    document.getElementById('w-sunset').textContent = formatTime(data.sys.sunset);
-
-  } catch (error) {
-    console.error("Error fetching weather:", error);
-  }
-}
-
-/**
- * Fetch Air Quality Index from AQICN and update the DOM
- */
-async function fetchAirQuality(lat, lon) {
-  const url = `https://api.waqi.info/feed/geo:${lat};${lon}/?token=${AQICN_KEY}`;
-  
-  try {
-    const response = await fetch(url);
-    const json = await response.json();
-    
-    if (json.status === "ok") {
-      const iaqi = json.data.iaqi; // The specific pollutant data
-      
-      // Update the main AQI score
-      document.getElementById('aq-aqi').textContent = json.data.aqi || '--';
-      
-      // Update individual pollutants (Check if they exist first, as some stations don't track everything)
-      document.getElementById('aq-pm25').textContent = iaqi.pm25 ? iaqi.pm25.v : '--';
-      document.getElementById('aq-pm10').textContent = iaqi.pm10 ? iaqi.pm10.v : '--';
-      document.getElementById('aq-co').textContent = iaqi.co ? iaqi.co.v : '--';
-      document.getElementById('aq-no2').textContent = iaqi.no2 ? iaqi.no2.v : '--';
-      document.getElementById('aq-o3').textContent = iaqi.o3 ? iaqi.o3.v : '--';
-      document.getElementById('aq-so2').textContent = iaqi.so2 ? iaqi.so2.v : '--';
-      document.getElementById('aq-dew').textContent = iaqi.d ? iaqi.d.v : '--';
-    }
-  } catch (error) {
-    console.error("Error fetching Air Quality:", error);
-  }
 }
 
 // ── DATE / TIME HELPERS ───────────────────────────────────────
@@ -738,7 +620,7 @@ function formatLocalDateTime(unixSec) {
 }
 
 /**
- * Unix timestamp → "D Mon YYYY HH:MM" for modal title
+ * Unix timestamp → "D Mon YYYY HH:MM" for the forecast modal title
  */
 function formatModalDateTime(unixSec) {
   const d  = new Date(unixSec * 1000);

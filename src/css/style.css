@@ -17,8 +17,8 @@
   --glass-border:     rgba(0, 229, 200, 0.15);
   --glass-blur:       blur(16px);
 
-  --text-primary:     #dff0f8;
-  --text-muted:       #7ba8be;
+  --text-primary:     #ffffff;
+  --text-muted:       #a8cfe0;
 
   --tab-active-bg:    #00e5c8;
   --tab-active-text:  #040c18;
@@ -53,6 +53,29 @@ body {
   background-size: cover;
 }
 
+
+/* ── BOOTSTRAP OVERRIDES — kill all default dark text ────────── */
+/* Bootstrap injects --bs-body-color:#212529 and --bs-table-color
+   which punch through custom rules. Override at :root level.     */
+:root {
+  --bs-body-color:          #ffffff;
+  --bs-body-bg:             transparent;
+  --bs-table-color:         #ffffff;
+  --bs-table-bg:            transparent;
+  --bs-table-striped-bg:    transparent;
+  --bs-table-hover-bg:      transparent;
+  --bs-table-border-color:  rgba(255,255,255,0.07);
+  --bs-modal-bg:            rgba(5,13,26,0.97);
+  --bs-modal-color:         #ffffff;
+  --bs-modal-border-color:  rgba(0,229,200,0.15);
+}
+
+/* Catch all remaining Bootstrap table defaults */
+.table                           { color: #ffffff !important; }
+.table > :not(caption) > * > *   { background-color: transparent !important; color: #ffffff !important; }
+.text-muted                      { color: var(--text-muted) !important; }
+.modal-content                   { color: #ffffff !important; background: rgba(5,13,26,0.97) !important; }
+.modal-body                      { color: #ffffff !important; }
 
 /* ── UTILITY ─────────────────────────────────────────────────── */
 .hidden { display: none !important; }
@@ -302,30 +325,100 @@ body {
 
 /* ── FORECAST TABLE ──────────────────────────────────────────── */
 .forecast-table {
-  color: var(--text-primary) !important;
+  color: #ffffff !important;
   font-size: 0.86rem;
+  border-collapse: separate;
+  border-spacing: 0 4px;   /* gap between rows */
+  width: 100%;
+}
+
+/* Sticky gradient header ribbon */
+.forecast-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 .forecast-table thead tr {
-  background: rgba(0,229,200,0.06);
+  background: linear-gradient(90deg,
+    rgba(0,229,200,0.22) 0%,
+    rgba(0,229,200,0.10) 50%,
+    rgba(0,229,200,0.22) 100%);
 }
 .forecast-table th {
-  color: var(--clr-accent) !important;
+  color: #ffffff !important;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 0.82rem;
-  letter-spacing: 0.05em;
-  border-bottom: 1px solid var(--glass-border) !important;
-  border-top: none !important;
-  padding: 0.5rem 0.6rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: none !important;
+  padding: 0.7rem 1rem;
+  white-space: nowrap;
+}
+.forecast-table th:first-child { padding-left: 1.25rem; border-radius: 8px 0 0 8px; }
+.forecast-table th:last-child  { padding-right: 1.25rem; border-radius: 0 8px 8px 0; }
+
+/* Teal underline separating header from rows */
+.forecast-table thead tr::after {
+  content: '';
+  display: table-row;
+  height: 2px;
+  background: rgba(0,229,200,0.4);
+}
+
+/* Body rows — pill-shaped glass cards */
+.forecast-table tbody tr {
+  background: rgba(255,255,255,0.035);
+  transition: background var(--transition), transform var(--transition);
+}
+.forecast-table tbody tr:nth-child(even) {
+  background: rgba(0,229,200,0.04);
+}
+.forecast-table tbody tr:hover {
+  background: rgba(0,229,200,0.10) !important;
+  transform: translateX(3px);
 }
 .forecast-table td {
-  border-color: rgba(255,255,255,0.04) !important;
+  color: #ffffff !important;
   background: transparent !important;
+  border: none !important;
   vertical-align: middle;
-  padding: 0.44rem 0.6rem;
+  padding: 0.6rem 1rem;
 }
-.forecast-table tbody tr:hover td {
-  background: rgba(0,229,200,0.04) !important;
+.forecast-table td:first-child {
+  padding-left: 1.25rem;
+  border-radius: 8px 0 0 8px;
+  color: var(--text-muted) !important;
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.forecast-table td:last-child {
+  padding-right: 1.25rem;
+  border-radius: 0 8px 8px 0;
+}
+
+/* Temperature — teal pill badge */
+.forecast-table td:nth-child(3) {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--clr-accent) !important;
+}
+
+/* Cloud cover — muted */
+.forecast-table td:nth-child(4) {
+  color: var(--text-muted) !important;
+  font-size: 0.83rem;
+}
+
+/* Weather icon */
+.forecast-table td:nth-child(2) img {
+  display: block;
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 6px rgba(0,229,200,0.25));
 }
 
 .btn-view {
@@ -401,25 +494,65 @@ body {
   font-family: var(--font-display);
   font-size: 1.05rem;
   font-weight: 700;
-  color: var(--text-primary);
+  color: #ffffff;
 }
 
 /* ── LOG TABLE ───────────────────────────────────────────────── */
-.log-table { color: var(--text-primary) !important; font-size: 0.86rem; }
+.log-table {
+  color: #ffffff !important;
+  font-size: 0.86rem;
+  border-collapse: separate;
+  border-spacing: 0 4px;
+  width: 100%;
+}
+.log-table thead tr {
+  background: linear-gradient(90deg,
+    rgba(0,229,200,0.22) 0%,
+    rgba(0,229,200,0.10) 50%,
+    rgba(0,229,200,0.22) 100%);
+}
 .log-table th {
-  color: var(--clr-accent) !important;
+  color: #ffffff !important;
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 0.8rem;
-  letter-spacing: 0.05em;
-  border-bottom: 1px solid var(--glass-border) !important;
-  border-top: none !important;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: none !important;
+  padding: 0.7rem 1rem;
+  white-space: nowrap;
+}
+.log-table th:first-child { padding-left: 1.25rem; border-radius: 8px 0 0 8px; }
+.log-table th:last-child  { padding-right: 1.25rem; border-radius: 0 8px 8px 0; }
+.log-table tbody tr {
+  background: rgba(255,255,255,0.035);
+  transition: background var(--transition), transform var(--transition);
+}
+.log-table tbody tr:nth-child(even) {
+  background: rgba(0,229,200,0.04);
+}
+.log-table tbody tr:hover {
+  background: rgba(0,229,200,0.10) !important;
+  transform: translateX(3px);
 }
 .log-table td {
-  border-color: rgba(255,255,255,0.05) !important;
+  color: #ffffff !important;
   background: transparent !important;
+  border: none !important;
+  vertical-align: middle;
+  padding: 0.6rem 1rem;
 }
-.log-table tbody tr:hover td { background: rgba(0,229,200,0.04) !important; }
+.log-table td:first-child {
+  padding-left: 1.25rem;
+  border-radius: 8px 0 0 8px;
+  color: var(--text-muted) !important;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.log-table td:last-child {
+  padding-right: 1.25rem;
+  border-radius: 0 8px 8px 0;
+}
 
 /* ── CLOSE BUTTON (Bootstrap override) ──────────────────────── */
 .btn-close-white { filter: invert(1) grayscale(100%) brightness(200%); }
