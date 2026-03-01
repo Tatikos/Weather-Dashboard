@@ -33,7 +33,14 @@ jobs:
           echo "---------------------------"
 
           # Check files one by one and give clear error messages
-          if [ ! -f "index.html" ]; then echo "❌ index.html not found in root!"; exit 1; fi
+          if [ -f "index.php" ]; then 
+            echo "✅ index.php found!"
+          elif [ -f "index.html" ]; then
+            echo "✅ index.html found!"
+          else 
+            echo "❌ Neither index.php nor index.html found in root!"; exit 1; 
+          fi
+          
           if [ ! -f "php/weather.php" ]; then echo "❌ php/weather.php not found!"; exit 1; fi
           
           # Check both possible JS paths
