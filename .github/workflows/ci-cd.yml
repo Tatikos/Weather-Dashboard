@@ -99,13 +99,18 @@ jobs:
         uses: actions/checkout@v4
 
       # --- SECURITY SCANNING ---
-      - name: Run Trivy Vulnerability Scanner
-        uses: aquasecurity/trivy-action@0.28.0
+      - name: Run Anchore Vulnerability Scanner
+        uses: anchore/scan-action@v3
+        id: scan
         with:
-          scan-type: 'fs'          # Scans the file system
-          format: 'table'          # Prints a nice table in the GitHub Actions logs
-          exit-code: '0'           # Set to '1' later if you want it to block the build on failure
-          severity: 'CRITICAL,HIGH' # Only look for major security flaws
+          path: "."                  # Scans your entire project folder
+          fail-build: false          # Set to true later if you want to block bad code
+          severity-cutoff: "high"    # Only alerts on HIGH or CRITICAL vulnerabilities
+
+      - name: Display Security Report
+        run: |
+          echo "Anchore Vulnerability Scan Complete!"
+          echo "Check the 'Run Anchore Vulnerability Scanner' step logs for detailed output."
 
       # --- DOCKER PACKAGING ---
       - name: Set up Docker Buildx
