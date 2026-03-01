@@ -1,0 +1,116 @@
+/* ================================================================
+   _forecast.css
+   Next 24h forecast table — pill-shaped rows, gradient header,
+   alternating row tints, column-specific styling, View button.
+   ================================================================ */
+
+/* ── Table shell ── */
+.forecast-table {
+  color: #ffffff !important;
+  font-size: 0.86rem;
+  border-collapse: separate;
+  border-spacing: 0 4px;  /* vertical gap between rows */
+  width: 100%;
+}
+
+/* ── Sticky gradient header ribbon ── */
+.forecast-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.forecast-table thead tr {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 229, 200, 0.22) 0%,
+    rgba(0, 229, 200, 0.10) 50%,
+    rgba(0, 229, 200, 0.22) 100%
+  );
+}
+
+.forecast-table th {
+  color: #ffffff !important;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: none !important;
+  padding: 0.7rem 1rem;
+  white-space: nowrap;
+}
+.forecast-table th:first-child { padding-left: 1.25rem; border-radius: 8px 0 0 8px; }
+.forecast-table th:last-child  { padding-right: 1.25rem; border-radius: 0 8px 8px 0; }
+
+/* ── Body rows — pill-shaped glass cards ── */
+.forecast-table tbody tr {
+  background: rgba(255, 255, 255, 0.035);
+  transition: background var(--transition), transform var(--transition);
+}
+.forecast-table tbody tr:nth-child(even) {
+  background: rgba(0, 229, 200, 0.04);
+}
+.forecast-table tbody tr:hover {
+  background: rgba(0, 229, 200, 0.10) !important;
+  transform: translateX(3px);
+}
+
+/* ── Cells ── */
+.forecast-table td {
+  color: #ffffff !important;
+  background: transparent !important;
+  border: none !important;
+  vertical-align: middle;
+  padding: 0.6rem 1rem;
+}
+.forecast-table td:first-child {
+  padding-left: 1.25rem;
+  border-radius: 8px 0 0 8px;
+  color: var(--text-muted) !important;
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.forecast-table td:last-child {
+  padding-right: 1.25rem;
+  border-radius: 0 8px 8px 0;
+}
+
+/* Temperature — bold teal */
+.forecast-table td:nth-child(3) {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--clr-accent) !important;
+}
+
+/* Cloud cover — muted */
+.forecast-table td:nth-child(4) {
+  color: var(--text-muted) !important;
+  font-size: 0.83rem;
+}
+
+/* Weather icon */
+.forecast-table td:nth-child(2) img {
+  display: block;
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 6px rgba(0, 229, 200, 0.25));
+}
+
+/* ── View button ── */
+.btn-view {
+  background: #1967d2;
+  border: none;
+  color: #fff;
+  border-radius: 6px;
+  font-family: var(--font-body);
+  font-size: 0.76rem;
+  font-weight: 500;
+  padding: 0.26rem 0.72rem;
+  cursor: pointer;
+  transition: filter var(--transition);
+}
+.btn-view:hover { filter: brightness(1.2); }

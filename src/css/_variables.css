@@ -1,0 +1,59 @@
+/* ================================================================
+   _variables.css
+   Design tokens + Bootstrap CSS variable overrides.
+   Imported first by style.css so all partials can use these vars.
+   ================================================================ */
+
+:root {
+  /* ── Palette ── */
+  --clr-bg-base:     #040c18;
+  --clr-accent:      #00e5c8;       /* teal  */
+  --clr-accent-warm: #ffb347;       /* amber */
+  --clr-danger:      #ff4d6d;
+  --clr-low-temp:    #60a5fa;       /* blue  */
+  --clr-high-temp:   #34d399;       /* green */
+
+  /* ── Glass surface ── */
+  --glass-bg:        rgba(6, 15, 30, 0.70);
+  --glass-border:    rgba(0, 229, 200, 0.15);
+  --glass-blur:      blur(16px);
+
+  /* ── Typography ── */
+  --text-primary:    #ffffff;
+  --text-muted:      #a8cfe0;
+  --font-display:    'Syne', sans-serif;
+  --font-body:       'DM Sans', sans-serif;
+
+  /* ── Tabs ── */
+  --tab-active-bg:   #00e5c8;
+  --tab-active-text: #040c18;
+
+  /* ── Misc ── */
+  --radius-card:     14px;
+  --radius-btn:      9px;
+  --transition:      0.22s ease;
+
+  /* ── Bootstrap overrides ──────────────────────────────────────
+     Bootstrap 5 injects --bs-body-color:#212529 and
+     --bs-table-color:#212529 which bleed through into tables and
+     modals. Override every relevant token here so nothing renders
+     dark text on our dark background.
+  ── */
+  --bs-body-color:         #ffffff;
+  --bs-body-bg:            transparent;
+  --bs-table-color:        #ffffff;
+  --bs-table-bg:           transparent;
+  --bs-table-striped-bg:   transparent;
+  --bs-table-hover-bg:     transparent;
+  --bs-table-border-color: rgba(255, 255, 255, 0.07);
+  --bs-modal-bg:           rgba(5, 13, 26, 0.97);
+  --bs-modal-color:        #ffffff;
+  --bs-modal-border-color: rgba(0, 229, 200, 0.15);
+}
+
+/* Hard selectors for any Bootstrap element that ignores the vars */
+.table                          { color: #ffffff !important; }
+.table > :not(caption) > * > *  { background-color: transparent !important; color: #ffffff !important; }
+.text-muted                     { color: var(--text-muted) !important; }
+.modal-content                  { color: #ffffff !important; background: rgba(5, 13, 26, 0.97) !important; }
+.modal-body                     { color: #ffffff !important; }

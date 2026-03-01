@@ -1,0 +1,104 @@
+/* ================================================================
+   _header.css
+   Page header, dashboard title, search card, form inputs,
+   action buttons (search / clear / log), section divider.
+   ================================================================ */
+
+/* ── Header ── */
+#header-section {
+  padding: 2.5rem 0 1.5rem;
+}
+
+.dashboard-title {
+  font-family: var(--font-display);
+  font-size: clamp(1.55rem, 3.8vw, 2.6rem);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--clr-accent);
+  text-shadow: 0 0 32px rgba(0, 229, 200, 0.28);
+  margin-bottom: 0.25rem;
+}
+
+.dashboard-subtitle {
+  font-size: 0.82rem;
+  font-weight: 300;
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ── Search card ── */
+.search-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-card);
+  padding: 1.25rem 1.4rem 1rem;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* ── Inputs ── */
+.custom-input {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(0, 229, 200, 0.22) !important;
+  color: var(--text-primary) !important;
+  border-radius: 8px !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.88rem !important;
+  padding: 0.48rem 0.85rem !important;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.custom-input:focus {
+  border-color: var(--clr-accent) !important;
+  box-shadow: 0 0 0 3px rgba(0, 229, 200, 0.16) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  outline: none !important;
+}
+
+.custom-input option {
+  background: #071525;
+  color: var(--text-primary);
+}
+
+.custom-input::placeholder { color: var(--text-muted) !important; }
+
+/* ── Validation ── */
+.custom-input.is-invalid { border-color: var(--clr-danger) !important; }
+
+.field-error {
+  display: none;
+  font-size: 0.76rem;
+  font-weight: 500;
+  color: var(--clr-danger);
+  margin-top: 0.28rem;
+  padding-left: 0.2rem;
+}
+.field-error.visible { display: block; }
+
+/* ── Action buttons ── */
+.btn-action {
+  border: none;
+  border-radius: var(--radius-btn);
+  color: #fff;
+  font-size: 1rem;
+  padding: 0.44rem 0.5rem;
+  transition: filter var(--transition), transform var(--transition);
+  line-height: 1;
+}
+.btn-action:hover  { filter: brightness(1.15); transform: translateY(-1px); }
+.btn-action:active { filter: brightness(0.92); transform: translateY(0); }
+
+.btn-search { background: #1967d2; }
+.btn-clear  { background: #c8273e; }
+.btn-log    { background: #b06a08; }
+
+/* ── Section divider ── */
+.section-divider {
+  border: none;
+  border-top: 1px solid var(--glass-border);
+  margin: 1.1rem auto;
+  max-width: 92%;
+  opacity: 0.7;
+}

@@ -1,0 +1,15 @@
+/* ================================================================
+   _responsive.css
+   All media queries in one place. Breakpoints follow Bootstrap's
+   convention: sm=576, md=768, lg=992, xl=1200.
+   ================================================================ */
+
+@media (max-width: 767px) {
+  #header-section    { padding: 1.75rem 0 1rem; }
+  .dashboard-title   { font-size: 1.4rem; }
+  .weather-temp      { font-size: 2rem; }
+  .aq-value          { font-size: 1.3rem; }
+  .map-wrapper,
+  #map               { min-height: 240px; }
+  .weather-card      { padding: 1rem; }
+}
