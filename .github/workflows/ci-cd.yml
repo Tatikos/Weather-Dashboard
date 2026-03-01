@@ -99,15 +99,13 @@ jobs:
         uses: actions/checkout@v4
 
       # --- SECURITY SCANNING ---
-      - name: Initialize CodeQL Security Scanner
-        uses: github/codeql-action/init@v3
+      - name: Run Trivy Vulnerability Scanner
+        uses: aquasecurity/trivy-action@master
         with:
-          languages: javascript
-
-      - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
-        with:
-          category: "/language:javascript"
+          scan-type: 'fs'          # Scans the file system
+          format: 'table'          # Prints a nice table in the GitHub Actions logs
+          exit-code: '0'           # Set to '1' later if you want it to block the build on failure
+          severity: 'CRITICAL,HIGH' # Only look for major security flaws
 
       # --- DOCKER PACKAGING ---
       - name: Set up Docker Buildx
