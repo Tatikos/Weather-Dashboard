@@ -155,31 +155,54 @@ document.getElementById('btn-log').addEventListener('click', async () => {
 
 
 /**
- * Geocode a location using Nominatim REST API
- * @param {string} query - The location to search for (e.g., "Nicosia, Cyprus")
- * @returns {Promise<Object|null>} - Returns an object with {lat, lon} or null if not found
+ * Geocode a location using Nominatim first, with OpenWeatherMap as a fallback
+ * @param {string} city - The city to search for
+ * @param {string} region - The region to search for
+ * @returns {Promise<Object|null>} - Returns {lat, lon} or null if both APIs fail
  */
-async function getCoordinates(query) {
-  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
+async function getCoordinates(city, region) {
+  // 1. Try Nominatim (Primary)
+  const nominatimUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)},${encodeURIComponent(region)},Cyprus&format=json&limit=1`;
 
   try {
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (data && data.length > 0) {
-      return {
-        lat: parseFloat(data[0].lat),
-        lon: parseFloat(data[0].lon),
-        displayName: data[0].display_name
-      };
-    } else {
-      console.warn("Nominatim: Location not found.");
-      return null;
+    const nomResponse = await fetch(nominatimUrl);
+    if (nomResponse.ok) {
+      const nomData = await nomResponse.json();
+      if (nomData && nomData.length > 0) {
+        console.log("📍 Coordinates found via Nominatim!");
+        return {
+          lat: parseFloat(nomData[0].lat),
+          lon: parseFloat(nomData[0].lon)
+        };
+      }
     }
   } catch (error) {
-    console.error("Error fetching coordinates from Nominatim:", error);
-    return null;
+    console.warn("Nominatim blocked the request (CORS/Rate Limit). Switching to fallback API...");
   }
+
+  // 2. Try OpenWeatherMap Geocoding API (Fallback)
+  // We use the city and 'CY' (country code for Cyprus)
+  const owmUrl = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(city)},CY&limit=1&appid=${OWM_KEY}`;
+  
+  try {
+    const owmResponse = await fetch(owmUrl);
+    if (owmResponse.ok) {
+      const owmData = await owmResponse.json();
+      if (owmData && owmData.length > 0) {
+        console.log("📍 Coordinates found via OpenWeatherMap Fallback!");
+        return {
+          lat: owmData[0].lat,
+          lon: owmData[0].lon
+        };
+      }
+    }
+  } catch (error) {
+    console.error("OpenWeatherMap Fallback also failed:", error);
+  }
+
+  // 3. If both APIs fail or the city doesn't exist
+  console.error("Could not find coordinates using any API.");
+  return null;
 }
 // ── CLEAR ─────────────────────────────────────────────────────
 function clearAll() {
@@ -569,10 +592,8 @@ async function handleSearch(e) {
     if (typeof saveToDatabase === 'function') {
       saveToDatabase(regionInput, citySelect);
     }
-
-    // 4. Combine inputs and Geocode via Nominatim
-    const searchQuery = `${citySelect}, ${regionInput}, Cyprus`; 
-    const coords = await getCoordinates(searchQuery);
+    // 4. Geocode using Primary and Fallback APIs
+    const coords = await getCoordinates(citySelect, regionInput);
 
     if (coords) {
       console.log(`Coordinates found! Lat: ${coords.lat}, Lon: ${coords.lon}`);
