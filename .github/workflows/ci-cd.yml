@@ -26,10 +26,26 @@ jobs:
       - name: Validate Project Structure (Build)
         run: |
           echo "Checking if critical files exist..."
-          test -f index.html
-          test -f src/js/main.js
-          test -f php/weather.php
-          echo "Build validation passed!"
+          
+          # Print the entire folder structure for debugging
+          echo "--- DIRECTORY STRUCTURE ---"
+          ls -R
+          echo "---------------------------"
+
+          # Check files one by one and give clear error messages
+          if [ ! -f "index.html" ]; then echo "❌ index.html not found in root!"; exit 1; fi
+          if [ ! -f "php/weather.php" ]; then echo "❌ php/weather.php not found!"; exit 1; fi
+          
+          # Check both possible JS paths
+          if [ -f "src/js/main.js" ]; then 
+            echo "✅ src/js/main.js found!"
+          elif [ -f "js/main.js" ]; then
+            echo "✅ js/main.js found!"
+          else 
+            echo "❌ main.js not found in src/js/ or js/!"; exit 1; 
+          fi
+
+          echo "✅ All critical files found! Build validation passed!"
 
       - name: Run Unit Tests
         run: |
