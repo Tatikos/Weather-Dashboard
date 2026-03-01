@@ -1,0 +1,128 @@
+/* ================================================================
+   _modals.css
+   Forecast detail modal, log modal, shared close button override,
+   secondary button, and log table styling.
+   ================================================================ */
+
+/* ── Shared modal shell ── */
+.custom-modal {
+  background: rgba(5, 13, 26, 0.97) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--radius-card) !important;
+  color: var(--text-primary) !important;
+  backdrop-filter: blur(20px);
+}
+.custom-modal .modal-header {
+  border-bottom: 1px solid var(--glass-border) !important;
+  padding: 1rem 1.25rem;
+}
+.custom-modal .modal-footer {
+  border-top: 1px solid var(--glass-border) !important;
+  padding: 0.75rem 1.25rem;
+}
+.custom-modal .modal-title {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--clr-accent);
+}
+
+/* ── Forecast modal internals ── */
+.modal-weather-icon {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+.modal-weather-desc {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.modal-stat-label {
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.22rem;
+}
+.modal-stat-value {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* ── Log table ── */
+.log-table {
+  color: #ffffff !important;
+  font-size: 0.86rem;
+  border-collapse: separate;
+  border-spacing: 0 4px;
+  width: 100%;
+}
+.log-table thead tr {
+  background: linear-gradient(
+    90deg,
+    rgba(0, 229, 200, 0.22) 0%,
+    rgba(0, 229, 200, 0.10) 50%,
+    rgba(0, 229, 200, 0.22) 100%
+  );
+}
+.log-table th {
+  color: #ffffff !important;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: none !important;
+  padding: 0.7rem 1rem;
+  white-space: nowrap;
+}
+.log-table th:first-child { padding-left: 1.25rem; border-radius: 8px 0 0 8px; }
+.log-table th:last-child  { padding-right: 1.25rem; border-radius: 0 8px 8px 0; }
+
+.log-table tbody tr {
+  background: rgba(255, 255, 255, 0.035);
+  transition: background var(--transition), transform var(--transition);
+}
+.log-table tbody tr:nth-child(even) { background: rgba(0, 229, 200, 0.04); }
+.log-table tbody tr:hover {
+  background: rgba(0, 229, 200, 0.10) !important;
+  transform: translateX(3px);
+}
+.log-table td {
+  color: #ffffff !important;
+  background: transparent !important;
+  border: none !important;
+  vertical-align: middle;
+  padding: 0.6rem 1rem;
+}
+.log-table td:first-child {
+  padding-left: 1.25rem;
+  border-radius: 8px 0 0 8px;
+  color: var(--text-muted) !important;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+.log-table td:last-child {
+  padding-right: 1.25rem;
+  border-radius: 0 8px 8px 0;
+}
+
+/* ── Shared button overrides ── */
+.btn-close-white { filter: invert(1) grayscale(100%) brightness(200%); }
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  color: var(--text-primary) !important;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  border-radius: 7px;
+  transition: background var(--transition);
+}
+.btn-secondary:hover { background: rgba(255, 255, 255, 0.18) !important; }

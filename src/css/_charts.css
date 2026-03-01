@@ -1,0 +1,16 @@
+/* ================================================================
+   _charts.css
+   Plotly gauge and line chart container sizing.
+   All chart colors are configured in js/ui/charts.js.
+   ================================================================ */
+
+/* Plotly embeds its own iframe/canvas — we just control the container */
+#gauge-temp,
+#gauge-humidity,
+#gauge-pressure,
+#chart-temp,
+#chart-humidity,
+#chart-pressure {
+  width: 100%;
+  min-height: 230px;
+}

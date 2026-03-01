@@ -306,7 +306,7 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ol@v10.8.0/dist/ol.js"></script>
   <script src="https://cdn.plot.ly/plotly-3.3.0.min.js"></script>
-  <script src="src/js/script.js"></script>
+  <script type="module" src="src/js/main.js"></script>
 
 </body>
 </html>
