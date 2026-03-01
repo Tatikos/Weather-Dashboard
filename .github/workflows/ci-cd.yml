@@ -100,7 +100,7 @@ jobs:
 
       # --- SECURITY SCANNING ---
       - name: Run Trivy Vulnerability Scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           scan-type: 'fs'          # Scans the file system
           format: 'table'          # Prints a nice table in the GitHub Actions logs
