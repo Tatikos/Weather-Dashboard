@@ -1,7 +1,4 @@
-import { OWM_KEY } from '../config.js';
-
 export async function getCoordinates(city, region, country) {
-  // Primary: Nominatim
   const nominatimUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)},${encodeURIComponent(region)},${encodeURIComponent(country)}&format=json&limit=1`;
 
   try {
@@ -15,11 +12,9 @@ export async function getCoordinates(city, region, country) {
   } catch (err) {
     console.warn("Nominatim failed. Switching to fallback...");
   }
-
-  // Fallback: OpenWeatherMap
-  const owmUrl = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(city)},${encodeURIComponent(region)}&limit=1&appid=${OWM_KEY}`;
+  const proxyUrl = `php/proxy.php?service=geo&city=${encodeURIComponent(city)}&region=${encodeURIComponent(region)}`;
   try {
-    const owmRes = await fetch(owmUrl);
+    const owmRes = await fetch(proxyUrl);
     if (owmRes.ok) {
       const owmData = await owmRes.json();
       if (owmData && owmData.length > 0) {
@@ -33,7 +28,7 @@ export async function getCoordinates(city, region, country) {
 }
 
 export async function reverseGeocode(lat, lon) {
-  const url = `https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${OWM_KEY}`;
+  const url = `php/proxy.php?service=reversegeo&lat=${lat}&lon=${lon}`;
   try {
     const res = await fetch(url);
     if (!res.ok) throw new Error("Reverse geocoding failed");
