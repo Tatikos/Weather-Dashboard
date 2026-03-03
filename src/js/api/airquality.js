@@ -1,21 +1,10 @@
 /* ================================================================
    js/api/airquality.js
-   Fetches AQI and pollutant data from AQICN using the
-   geolocalized feed (lat/lon) and updates the AQ card.
+   Fetches AQI and pollutant data securely via PHP proxy.
    ================================================================ */
 
-import { AQICN_KEY } from '../config.js';
-
-/**
- * Fetch air quality data for a coordinate and update all AQ DOM
- * elements. Dew point is intentionally skipped here — it is set
- * more accurately by weather.js from the OWM response.
- *
- * @param {number} lat
- * @param {number} lon
- */
 export async function fetchAirQuality(lat, lon) {
-  const url = `https://api.waqi.info/feed/geo:${lat};${lon}/?token=${AQICN_KEY}`;
+  const url = `php/proxy.php?service=aqi&lat=${lat}&lon=${lon}`;
 
   try {
     const res  = await fetch(url);
@@ -36,7 +25,6 @@ export async function fetchAirQuality(lat, lon) {
     setAQ('aq-o3',   iaqi.o3?.v);
     setAQ('aq-so2',  iaqi.so2?.v);
 
-    // Only set dew from AQICN if weather.js hasn't already written it
     const dewEl = document.getElementById('aq-dew');
     if (!dewEl.textContent || dewEl.textContent === '--') {
       setAQ('aq-dew', iaqi.dew?.v);
@@ -47,10 +35,6 @@ export async function fetchAirQuality(lat, lon) {
   }
 }
 
-/**
- * @param {string} id  - DOM element id
- * @param {*}      val - Value to display; falls back to '--'
- */
 function setAQ(id, val) {
   const el = document.getElementById(id);
   if (el) el.textContent = (val !== undefined && val !== null) ? val : '--';
