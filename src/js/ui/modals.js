@@ -5,7 +5,7 @@
    ================================================================ */
 
 import { fetchLogs } from '../api/database.js';
-import state from '../state.js'; // Imported to read forecast data!
+import state from '../state.js';
 
 export function initLogModal() {
   const btnLog = document.getElementById('btn-log');
@@ -125,23 +125,18 @@ export function openForecastModal(index) {
   const item = state.forecastData.list[index];
   if (!item) return;
 
-  // Grab the data objects
   const tempObj = item.main || {};
   const weatherObj = item.weather?.[0] || {};
   const windObj = item.wind || {};
-
-  // Find your modal's HTML elements based on your EXACT index.html IDs
   const modalTitle = document.getElementById('forecastModalTitle');
   const dIcon = document.getElementById('modal-icon');
   const dDesc = document.getElementById('modal-weather-text');
   const dHum = document.getElementById('modal-humidity');
   const dPressure = document.getElementById('modal-pressure');
   const dWind = document.getElementById('modal-wind');
-
-  // Populate the modal
   if (modalTitle) {
     const dateStr = new Date(item.dt * 1000).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
-    modalTitle.textContent = `Forecast: ${dateStr}`; // Put the time in the title
+    modalTitle.textContent = `Forecast: ${dateStr}`;
   }
   
   if (dIcon) {
@@ -149,7 +144,6 @@ export function openForecastModal(index) {
   }
   
   if (dDesc) {
-    // Injecting the temperature and feels-like here since there is no dedicated Temp HTML box!
     dDesc.innerHTML = `<strong>${tempObj.temp} °C</strong> (Feels like ${tempObj.feels_like} °C)<br>
                        <span style="text-transform: capitalize;">${weatherObj.description}</span>`;
   }
@@ -157,8 +151,6 @@ export function openForecastModal(index) {
   if (dHum) dHum.textContent = `${tempObj.humidity}%`;
   if (dPressure) dPressure.textContent = `${tempObj.pressure} hPa`;
   if (dWind) dWind.textContent = `${windObj.speed} m/s`;
-
-  // Show the modal
   const modal = bootstrap.Modal.getOrCreateInstance(forecastModalEl);
   modal.show();
 }

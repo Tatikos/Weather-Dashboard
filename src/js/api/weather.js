@@ -52,8 +52,6 @@ export async function fetchWeather(lat, lon) {
     document.getElementById('w-clouds').textContent   = `${data.clouds.all}%`;
     document.getElementById('w-sunrise').textContent  = formatTime(data.sys.sunrise);
     document.getElementById('w-sunset').textContent   = formatTime(data.sys.sunset);
-
-    // Dew — written here; AQICN only overwrites if this is still '--'
     document.getElementById('aq-dew').textContent = dew;
 
   } catch (err) {

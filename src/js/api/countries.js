@@ -11,7 +11,6 @@ export async function loadCountries() {
   if (!countrySelect || !citySelect) return;
 
   try {
-    // Fetch countries and their cities
     const res = await fetch('https://countriesnow.space/api/v0.1/countries');
     const json = await res.json();
     
@@ -62,7 +61,6 @@ function populateCities(countryName) {
   const countryObj = globalCountryData.find(c => c.country === countryName);
   
   if (countryObj && countryObj.cities.length > 0) {
-    // Sort cities alphabetically
     const cities = countryObj.cities.sort();
     
     cities.forEach(city => {

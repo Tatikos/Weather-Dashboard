@@ -62,8 +62,6 @@ function tryConnect(string $host, string $user, string $pass, string $name): ?my
     if ($host === '') {
         return null;
     }
-
-    // Suppress the PHP warning; we handle failure ourselves
     $conn = @mysqli_connect($host, $user, $pass);
     if (!$conn) {
         return null;
