@@ -2,6 +2,7 @@
    js/main.js  —  Application entry point
    
    Responsibilities:
+     - Auth Session Management
      - Form validation
      - Search orchestration (geocode → fetch → render)
      - Button event wiring (search, clear)
@@ -32,17 +33,109 @@ const cityError   = document.getElementById('city-error');
 const btnSearch   = document.getElementById('btn-search');
 const btnClear    = document.getElementById('btn-clear');
 
+// ── AUTHENTICATION DOM & LOGIC ──────────────────────────────────
+const authModalEl = document.getElementById('authModal');
+const authModal = authModalEl ? new bootstrap.Modal(authModalEl) : null;
+const authForm = document.getElementById('auth-form');
+const toggleLogin = document.getElementById('toggleLogin');
+const toggleRegister = document.getElementById('toggleRegister');
+const authError = document.getElementById('auth-error');
+const btnLogout = document.getElementById('btn-logout');
+
+// UI Toggles for Login vs Register
+if (toggleLogin && toggleRegister) {
+  toggleLogin.addEventListener('change', () => {
+    document.getElementById('group-displayname').classList.add('hidden');
+    document.getElementById('group-email').classList.add('hidden');
+    document.getElementById('btn-auth-submit').textContent = 'Login';
+    document.getElementById('authModalTitle').textContent = 'Login';
+    authError.classList.add('hidden');
+  });
+  toggleRegister.addEventListener('change', () => {
+    document.getElementById('group-displayname').classList.remove('hidden');
+    document.getElementById('group-email').classList.remove('hidden');
+    document.getElementById('btn-auth-submit').textContent = 'Register';
+    document.getElementById('authModalTitle').textContent = 'Register';
+    authError.classList.add('hidden');
+  });
+}
+
+// Handle Form Submission
+if (authForm) {
+  authForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const isRegister = toggleRegister.checked;
+    const action = isRegister ? 'register' : 'login';
+    
+    const payload = {
+      user_name: document.getElementById('auth-username').value.trim(),
+      password: document.getElementById('auth-password').value,
+    };
+    if (isRegister) {
+      payload.display_name = document.getElementById('auth-displayname').value.trim();
+      payload.email = document.getElementById('auth-email').value.trim();
+    }
+
+    try {
+      const res = await fetch(`php/auth.php?action=${action}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+
+      if (data.status === 'success') {
+        authModal.hide();
+        checkAuthStatus(); // Refresh UI
+      } else {
+        authError.textContent = data.message;
+        authError.classList.remove('hidden');
+      }
+    } catch (err) {
+      console.error("Auth error:", err);
+    }
+  });
+}
+
+// Check if logged in on page load
+async function checkAuthStatus() {
+  try {
+    const res = await fetch('php/auth.php?action=status');
+    const data = await res.json();
+    
+    if (data.logged_in) {
+      // Overwrite global environment username so logs save to this user
+      window.ENV.USERNAME = data.user_name; 
+      
+      document.getElementById('user-display').classList.remove('hidden');
+      document.getElementById('user-name-text').textContent = data.display_name;
+      document.getElementById('btn-auth').classList.add('hidden');
+      document.getElementById('btn-logout').classList.remove('hidden');
+    } else {
+      document.getElementById('user-display').classList.add('hidden');
+      document.getElementById('btn-auth').classList.remove('hidden');
+      document.getElementById('btn-logout').classList.add('hidden');
+    }
+  } catch (err) {
+    console.warn("Could not check auth status");
+  }
+}
+
+// Handle Logout
+if (btnLogout) {
+  btnLogout.addEventListener('click', async () => {
+    await fetch('php/auth.php?action=logout', { method: 'POST' });
+    window.location.reload(); // Reload page to clear sensitive data
+  });
+}
+
 // ── Init ─────────────────────────────────────────────────────────
 btnSearch.addEventListener('click', handleSearch);
 btnClear.addEventListener('click', clearAll);
 initLogModal();
+checkAuthStatus(); // Run auth check immediately
 
 // ── Validation ───────────────────────────────────────────────────
-/**
- * Validates the region and city inputs.
- * Shows inline error messages below each field.
- * @returns {boolean} true if both fields are valid
- */
 function validate() {
   let valid = true;
 
@@ -68,15 +161,6 @@ function validate() {
 }
 
 // ── Search handler ────────────────────────────────────────────────
-/**
- * Main search flow:
- *  1. Validate form
- *  2. Fire-and-forget DB save
- *  3. Geocode (Nominatim → OWM fallback)
- *  4. Show all result sections
- *  5. Fetch weather, forecast, air quality in parallel
- *  6. Render map + charts
- */
 async function handleSearch(e) {
   if (e) e.preventDefault();
   if (!validate()) return;
@@ -99,10 +183,8 @@ async function handleSearch(e) {
 
     const { lat, lon } = coords;
 
-    // Sections must be visible before map + Plotly render
     showAllSections(region, city);
 
-    // Parallel fetch — forecast must resolve before displayCharts
     const [fcData] = await Promise.all([
       fetchForecastWeather(lat, lon),
       fetchWeather(lat, lon),
