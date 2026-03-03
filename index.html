@@ -30,6 +30,11 @@
         <div class="col-12 col-xl-10">
 
           <div class="text-center mb-4">
+            <div class="d-flex justify-content-end align-items-center mb-3">
+            <span id="user-display" class="text-muted small me-3 hidden">Welcome, <strong id="user-name-text" class="text-white"></strong></span>
+            <button id="btn-auth" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#authModal">Login / Register</button>
+            <button id="btn-logout" class="btn btn-sm btn-outline-danger hidden">Logout</button>
+          </div>
             <h1 class="dashboard-title">Advanced Weather Dashboard</h1>
             <p class="dashboard-subtitle">* The ultimate weather guide *</p>
           </div>
@@ -278,29 +283,72 @@
     </div>
   </div>
 
-  <div class="modal fade" id="logModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-      <div class="modal-content custom-modal">
-        <div class="modal-header">
-          <h5 class="modal-title">Last 5 requests</h5>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+  <div class="modal fade custom-modal" id="logModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Last 5 requests</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-0">
+        <div class="table-responsive">
+          <table class="table table-borderless log-table mb-0">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Region</th>
+                <th>City</th>
+                <th>Country</th>
+              </tr>
+            </thead>
+            <tbody id="log-tbody">
+              </tbody>
+          </table>
         </div>
-        <div class="modal-body">
-          <div class="table-responsive">
-            <table class="table table-sm log-table mb-0">
-              <thead>
-                <tr><th>Time</th><th>Region</th><th>City</th><th>Country</th></tr>
-              </thead>
-              <tbody id="log-tbody"></tbody>
-            </table>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
+</div>
+
+  <div class="modal fade custom-modal" id="authModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="authModalTitle">Login</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div id="auth-error" class="alert alert-danger hidden py-2 small"></div>
+        
+        <div class="btn-group w-100 mb-3" role="group">
+          <input type="radio" class="btn-check" name="authToggle" id="toggleLogin" checked>
+          <label class="btn btn-outline-info" for="toggleLogin">Login</label>
+          <input type="radio" class="btn-check" name="authToggle" id="toggleRegister">
+          <label class="btn btn-outline-info" for="toggleRegister">Register</label>
+        </div>
+
+        <form id="auth-form">
+          <div class="mb-3">
+            <input type="text" id="auth-username" class="form-control custom-input" placeholder="Username" required>
+          </div>
+          <div class="mb-3 hidden" id="group-displayname">
+            <input type="text" id="auth-displayname" class="form-control custom-input" placeholder="Display Name">
+          </div>
+          <div class="mb-3 hidden" id="group-email">
+            <input type="email" id="auth-email" class="form-control custom-input" placeholder="Email Address">
+          </div>
+          <div class="mb-4">
+            <input type="password" id="auth-password" class="form-control custom-input" placeholder="Password" required>
+          </div>
+          <button type="submit" class="btn btn-action btn-search w-100" id="btn-auth-submit">Login</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/ol@v10.8.0/dist/ol.js"></script>
