@@ -3,20 +3,21 @@
    
    Responsibilities:
      - Auth Session Management
+     - Dynamic Country Loading & Auto-Locate
      - Form validation
      - Search orchestration (geocode → fetch → render)
      - Button event wiring (search, clear)
-     - Initialise log modal listener
    ================================================================ */
 
 'use strict';
 
 // ── API ──────────────────────────────────────────────────────────
-import { getCoordinates }      from './api/geocoding.js';
-import { fetchWeather }        from './api/weather.js';
-import { fetchForecastWeather } from './api/forecast.js';
-import { fetchAirQuality }     from './api/airquality.js';
-import { saveToDatabase }      from './api/database.js';
+import { getCoordinates, reverseGeocode } from './api/geocoding.js';
+import { fetchWeather }                   from './api/weather.js';
+import { fetchForecastWeather }           from './api/forecast.js';
+import { fetchAirQuality }                from './api/airquality.js';
+import { saveToDatabase }                 from './api/database.js';
+import { loadCountries }                  from './api/countries.js';
 
 // ── UI ───────────────────────────────────────────────────────────
 import { showLoading, hideLoading } from './ui/loading.js';
@@ -26,12 +27,14 @@ import { displayCharts }            from './ui/charts.js';
 import { initLogModal }             from './ui/modals.js';
 
 // ── DOM ──────────────────────────────────────────────────────────
-const regionInput = document.getElementById('region-input');
-const citySelect  = document.getElementById('city-select');
-const regionError = document.getElementById('region-error');
-const cityError   = document.getElementById('city-error');
-const btnSearch   = document.getElementById('btn-search');
-const btnClear    = document.getElementById('btn-clear');
+const regionInput   = document.getElementById('region-input');
+const citySelect    = document.getElementById('city-select');
+const countrySelect = document.getElementById('country-select');
+const regionError   = document.getElementById('region-error');
+const cityError     = document.getElementById('city-error');
+const btnSearch     = document.getElementById('btn-search');
+const btnClear      = document.getElementById('btn-clear');
+const btnLocate     = document.getElementById('btn-locate');
 
 // ── AUTHENTICATION DOM & LOGIC ──────────────────────────────────
 const authModalEl = document.getElementById('authModal');
@@ -104,7 +107,6 @@ async function checkAuthStatus() {
     const data = await res.json();
     
     if (data.logged_in) {
-      // Overwrite global environment username so logs save to this user
       window.ENV.USERNAME = data.user_name; 
       
       document.getElementById('user-display').classList.remove('hidden');
@@ -125,7 +127,45 @@ async function checkAuthStatus() {
 if (btnLogout) {
   btnLogout.addEventListener('click', async () => {
     await fetch('php/auth.php?action=logout', { method: 'POST' });
-    window.location.reload(); // Reload page to clear sensitive data
+    window.location.reload();
+  });
+}
+
+// ── LOCATE ME LOGIC ──────────────────────────────────────────────
+if (btnLocate) {
+  btnLocate.addEventListener('click', () => {
+    if (!navigator.geolocation) return alert('Geolocation not supported by your browser.');
+    
+    btnLocate.disabled = true;
+    btnLocate.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Locating...';
+
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      const { latitude, longitude } = position.coords;
+      const locData = await reverseGeocode(latitude, longitude);
+      
+      if (locData) {
+        regionInput.value = locData.region;
+        let optionExists = Array.from(citySelect.options).some(opt => opt.value === locData.city);
+        if (!optionExists) {
+          const opt = document.createElement('option');
+          opt.value = locData.city;
+          opt.textContent = locData.city;
+          citySelect.appendChild(opt);
+        }
+        
+        citySelect.disabled = false;
+        citySelect.value = locData.city;
+
+      } else {
+        alert('Could not determine your city from coordinates.');
+      }
+      btnLocate.disabled = false;
+      btnLocate.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> Auto-Locate Me';
+    }, () => {
+      alert('Unable to retrieve location. Check permissions.');
+      btnLocate.disabled = false;
+      btnLocate.innerHTML = '<i class="fa-solid fa-location-crosshairs"></i> Auto-Locate Me';
+    });
   });
 }
 
@@ -134,6 +174,7 @@ btnSearch.addEventListener('click', handleSearch);
 btnClear.addEventListener('click', clearAll);
 initLogModal();
 checkAuthStatus(); // Run auth check immediately
+loadCountries();   // Load the countries API immediately
 
 // ── Validation ───────────────────────────────────────────────────
 function validate() {
@@ -165,17 +206,18 @@ async function handleSearch(e) {
   if (e) e.preventDefault();
   if (!validate()) return;
 
-  const region = regionInput.value.trim();
-  const city   = citySelect.value;
+  const region  = regionInput.value.trim();
+  const city    = citySelect.value;
+  const country = countrySelect ? countrySelect.value : 'Cyprus';
 
   btnSearch.disabled = true;
   showLoading();
 
   try {
     // Fire-and-forget — failure is non-critical
-    saveToDatabase(region, city);
+    saveToDatabase(region, city, country);
 
-    const coords = await getCoordinates(city, region);
+    const coords = await getCoordinates(city, region, country);
     if (!coords) {
       alert('No result for that location. Please try a different region or city.');
       return;

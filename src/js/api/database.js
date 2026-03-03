@@ -1,8 +1,7 @@
 /* ================================================================
    js/api/database.js
    Thin wrappers around weather.php for saving and retrieving
-   search log entries. All failures are silent on the client —
-   DB is unavailable locally (no VPN) and that's expected.
+   search log entries.
    ================================================================ */
 
 import { PHP_FILE } from '../config.js';
@@ -13,8 +12,9 @@ import { PHP_FILE } from '../config.js';
  *
  * @param {string} region
  * @param {string} city
+ * @param {string} country
  */
-export async function saveToDatabase(region, city) {
+export async function saveToDatabase(region, city, country = 'Cyprus') {
   const currentUser = window.ENV?.USERNAME || 'student_test';
 
   try {
@@ -23,13 +23,14 @@ export async function saveToDatabase(region, city) {
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({
         username: currentUser,
-        region,
-        city,
-        country: 'Cyprus',
+        region: region.substring(0, 15),
+        city: city.substring(0, 15),
+        country: country.substring(0, 20),
       }),
     });
+
     if (res.status === 201) {
-      console.log('[database] Save successful (or silently skipped locally).');
+      console.log('[database] Save successful!');
     } else {
       console.warn('[database] Unexpected response:', res.status, await res.text());
     }
@@ -44,7 +45,6 @@ export async function saveToDatabase(region, city) {
  * @returns {Promise<Array>} Array of { timestamp, region, city, country }
  */
 export async function fetchLogs() {
-  // Use the logged-in user, OR fall back to 'student_test' if they aren't logged in yet
   const currentUser = window.ENV?.USERNAME || 'student_test';
   
   const url = `${PHP_FILE}?username=${encodeURIComponent(currentUser)}`;

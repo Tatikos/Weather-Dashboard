@@ -41,7 +41,16 @@
 
           <div class="search-card">
             <div class="row g-2 align-items-start">
-
+              <div class="mb-3">
+              <label for="country-select" class="form-label text-muted small mb-1">Country</label>
+              <select id="country-select" class="form-select custom-input">
+                <option value="Cyprus" selected>Loading countries...</option>
+              </select>
+            </div>
+            
+            <button type="button" id="btn-locate" class="btn btn-secondary w-100 mb-3" style="border-radius: var(--radius-btn);">
+              <i class="fa-solid fa-location-crosshairs"></i> Auto-Locate Me
+            </button>
               <!-- Region input -->
               <div class="col-12 col-md-4">
                 <input
@@ -55,18 +64,11 @@
               </div>
 
               <!-- City select -->
-              <div class="col-12 col-md-5">
-                <select id="city-select" class="form-select custom-input">
-                  <option value="">Select city</option>
-                  <option value="Nicosia">Nicosia</option>
-                  <option value="Limassol">Limassol</option>
-                  <option value="Larnaca">Larnaca</option>
-                  <option value="Paphos">Paphos</option>
-                  <option value="Famagusta">Famagusta</option>
-                  <option value="Kyrenia">Kyrenia</option>
-                  <option value="Ammochostos">Ammochostos</option>
-                </select>
-                <div class="field-error" id="city-error">Please select your city!</div>
+              <div class="col-12 col-md-4">
+                  <select id="city-select" class="form-select custom-input" disabled>
+                    <option value="" disabled selected>Select a country first...</option>
+                  </select>
+                  <div id="city-error" class="field-error">Please select a city.</div>
               </div>
 
               <!-- Action buttons -->
