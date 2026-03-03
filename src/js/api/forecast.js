@@ -61,20 +61,25 @@ export function populateForecastTable(data) {
       <td>${temp} °C</td>
       <td>${clouds}</td>
       <td>
-        <button class="btn-view" data-idx="${idx}">View</button>
+        <button class="btn btn-sm btn-outline-info btn-view" data-idx="${idx}">View</button>
       </td>
     `;
     tbody.appendChild(tr);
   });
 
-  // Delegate click to the tbody instead of inline onclick
-  // (keeps HTML clean and avoids polluting window scope)
-  tbody.addEventListener('click', (e) => {
+  // Use onclick instead of addEventListener to prevent duplicate triggers 
+  // every time the user makes a new search!
+  tbody.onclick = (e) => {
     const btn = e.target.closest('.btn-view');
     if (!btn) return;
+    
     // Dynamically import to avoid circular deps with modals.js
     import('../ui/modals.js').then(({ openForecastModal }) => {
-      openForecastModal(parseInt(btn.dataset.idx, 10));
+      if (openForecastModal) {
+        openForecastModal(parseInt(btn.dataset.idx, 10));
+      } else {
+        console.error("openForecastModal is missing from modals.js!");
+      }
     });
-  });
+  };
 }
