@@ -46,10 +46,15 @@ export function clearAll() {
   // ── Form ──
   const regionInput = document.getElementById('region-input');
   const citySelect  = document.getElementById('city-select');
+  
   regionInput.value = '';
-  citySelect.value  = '';
+  if (citySelect) {
+    citySelect.value = '';
+  }
+  
   regionInput.classList.remove('is-invalid');
-  citySelect.classList.remove('is-invalid');
+  if (citySelect) citySelect.classList.remove('is-invalid');
+  
   document.getElementById('region-error').classList.remove('visible');
   document.getElementById('city-error').classList.remove('visible');
 
