@@ -1,13 +1,13 @@
 /* ================================================================
    js/api/forecast.js
-   Fetches the 5-day / 3-hour forecast securely via PHP proxy.
    ================================================================ */
 
+import { OWM_KEY } from '../config.js';
 import state from '../state.js';
 import { formatLocalDateTime } from '../helpers.js';
 
 export async function fetchForecastWeather(lat, lon) {
-  const url = `php/proxy.php?service=forecast&lat=${lat}&lon=${lon}`;
+  const url = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${OWM_KEY}`;
 
   const res  = await fetch(url);
   const data = await res.json();
@@ -45,6 +45,7 @@ export function populateForecastTable(data) {
     tbody.appendChild(tr);
   });
 
+  // Prevents duplicate clicks on the modal buttons
   tbody.onclick = (e) => {
     const btn = e.target.closest('.btn-view');
     if (!btn) return;

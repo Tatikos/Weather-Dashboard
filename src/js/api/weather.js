@@ -1,12 +1,12 @@
 /* ================================================================
    js/api/weather.js
-   Fetches current weather securely via PHP proxy.
    ================================================================ */
 
+import { OWM_KEY } from '../config.js';
 import { formatTime } from '../helpers.js';
 
 export async function fetchWeather(lat, lon) {
-  const url = `php/proxy.php?service=weather&lat=${lat}&lon=${lon}`;
+  const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${OWM_KEY}&units=metric`;
 
   try {
     const res = await fetch(url);
