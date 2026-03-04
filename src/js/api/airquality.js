@@ -1,10 +1,11 @@
 /* ================================================================
    js/api/airquality.js
-   Fetches AQI and pollutant data securely via PHP proxy.
    ================================================================ */
 
+import { AQICN_KEY } from '../config.js';
+
 export async function fetchAirQuality(lat, lon) {
-  const url = `php/proxy.php?service=aqi&lat=${lat}&lon=${lon}`;
+  const url = `https://api.waqi.info/feed/geo:${lat};${lon}/?token=${AQICN_KEY}`;
 
   try {
     const res  = await fetch(url);
