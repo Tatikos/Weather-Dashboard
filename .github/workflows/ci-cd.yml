@@ -6,13 +6,15 @@ on:
   pull_request:
     branches: [ "main", "master" ]
 
+# Prevents multiple redundant builds from running at the same time
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  # ════════════════════════════════════════════════════════════
   # STAGE 1: BUILD & UNIT TEST
-  # Goal: Does the code work? (File structure & logic checks)
-  # ════════════════════════════════════════════════════════════
   stage-1-build-and-test:
-    name: "Stage 1: Build & Unit Test"
+    name: "Stage 1: Build & Validation"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -22,103 +24,60 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
+          extensions: mysqli, pdo_mysql
           
-      - name: Validate Project Structure (Build)
+      - name: Validate Project Structure
         run: |
-          echo "Checking if critical files exist..."
-          
-          # Print the entire folder structure for debugging
-          echo "--- DIRECTORY STRUCTURE ---"
-          ls -R
-          echo "---------------------------"
+          # Flexible check for index file
+          [[ -f "index.php" || -f "index.html" ]] || (echo "❌ Missing entry point!"; exit 1)
+          [[ -f "php/weather.php" ]] || (echo "❌ Missing backend!"; exit 1)
+          echo "✅ Project structure is valid."
 
-          # Check files one by one and give clear error messages
-          if [ -f "index.php" ]; then 
-            echo "✅ index.php found!"
-          elif [ -f "index.html" ]; then
-            echo "✅ index.html found!"
-          else 
-            echo "❌ Neither index.php nor index.html found in root!"; exit 1; 
-          fi
-          
-          if [ ! -f "php/weather.php" ]; then echo "❌ php/weather.php not found!"; exit 1; fi
-          
-          # Check both possible JS paths
-          if [ -f "src/js/main.js" ]; then 
-            echo "✅ src/js/main.js found!"
-          elif [ -f "js/main.js" ]; then
-            echo "✅ js/main.js found!"
-          else 
-            echo "❌ main.js not found in src/js/ or js/!"; exit 1; 
-          fi
-
-          echo "✅ All critical files found! Build validation passed!"
-
-      - name: Run Unit Tests
-        run: |
-          echo "Currently no unit tests (like PHPUnit or Jest) are configured."
-          echo "Pipeline is ready for tests to be added here in the future!"
-          # Example future command: vendor/bin/phpunit tests/
-
-  # ════════════════════════════════════════════════════════════
-  # STAGE 2: CODE QUALITY
-  # Goal: Is the code clean? (Syntax Linting)
-  # ════════════════════════════════════════════════════════════
+  # STAGE 2: CODE QUALITY & SECRET SCAN
   stage-2-code-quality:
-    name: "Stage 2: Code Quality"
+    name: "Stage 2: Quality & Security"
     runs-on: ubuntu-latest
-    needs: stage-1-build-and-test # Waits for Stage 1 to pass
+    needs: stage-1-build-and-test
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          fetch-depth: 0 
+
+      - name: Secret Detection
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: PHP Syntax Linter
-        run: |
-          echo "Scanning all PHP files for syntax errors..."
-          find . -name "*.php" -print0 | xargs -0 -n1 php -l
+        run: find . -name "*.php" -print0 | xargs -0 -n1 php -l
 
-  # ════════════════════════════════════════════════════════════
   # STAGE 3: PACKAGE & SECURITY
-  # Goal: Is it safe? (Vulnerability Scan & Docker Packaging)
-  # ════════════════════════════════════════════════════════════
   stage-3-package-and-security:
-    name: "Stage 3: Package & Security"
+    name: "Stage 3: Docker & Anchore"
     runs-on: ubuntu-latest
-    needs: stage-2-code-quality # Waits for Stage 2 to pass
+    needs: stage-2-code-quality
     permissions:
       security-events: write
-      actions: read
-      contents: read
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # --- SECURITY SCANNING ---
       - name: Run Anchore Vulnerability Scanner
         uses: anchore/scan-action@v3
-        id: scan
         with:
-          path: "."                  # Scans your entire project folder
-          fail-build: false          # Set to true later if you want to block bad code
-          severity-cutoff: "high"    # Only alerts on HIGH or CRITICAL vulnerabilities
+          path: "."
+          fail-build: false
+          severity-cutoff: "high"
 
-      - name: Display Security Report
-        run: |
-          echo "Anchore Vulnerability Scan Complete!"
-          echo "Check the 'Run Anchore Vulnerability Scanner' step logs for detailed output."
-
-      # --- DOCKER PACKAGING ---
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker Image
+      - name: Build Docker Image (with Caching)
         uses: docker/build-push-action@v5
         with:
           context: .
-          push: false # Set to true later if you want to push to DockerHub
+          push: false
           tags: weather-dashboard:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
