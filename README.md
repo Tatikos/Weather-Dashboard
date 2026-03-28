@@ -1,8 +1,6 @@
 # EPL425: Internet Technologies - Assignment 1
 **Advanced Weather and Air Quality Dashboard**
 
-**Student Name:** gfotio01
-**Student ID:** UC1069763
 **Live URL:** `https://students.cs.ucy.ac.cy/~gfotio01/epl425/`  
 
 ---
